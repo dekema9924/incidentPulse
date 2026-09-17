@@ -1,4 +1,5 @@
 import Button from '@/components/ui/Button'
+import Logo from '@/components/ui/Logo'
 import Link from 'next/link'
 
 export default function SignUpPage() {
@@ -6,10 +7,7 @@ export default function SignUpPage() {
         <div className="min-h-screen flex items-center justify-center">
 
             <form className='panel h-auto rounded-lg overflow-y-none w-[min(360px,92vw)] p-[clamp(20px,5vw,28px)] max-h-[min(560px,90vh)]' action="">
-                <div className='flex items-center gap-1 my-6 justify-center  '>
-                    <span className='w-3 block h-3 rounded-full bg-[#E5484D] animate-pulse'></span>
-                    <p className='font-bold text-md'>INCIDENT PULSE</p>
-                </div>
+                <Logo />
 
                 {/* inputs
                  || email */}
