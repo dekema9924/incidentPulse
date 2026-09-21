@@ -29,6 +29,10 @@ body {
   color: var(--secondary-text);
 }
 
+.error_message {
+  color: var(--p1);
+}
+
 .panel {
   background-color: var(--panel);
   border: 2px solid var(--border);

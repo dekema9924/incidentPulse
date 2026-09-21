@@ -1,12 +1,46 @@
+'use client'
 import Button from '@/components/ui/Button'
 import Link from 'next/link'
+import { useForm, SubmitHandler } from "react-hook-form"
+import PasswordInput from '@/components/ui/Passwordinput'
+import toast from 'react-hot-toast'
+import { useRouter } from 'next/navigation'
+import { SignIn } from '@/src/lib/auth-actions'
+
+
+type formDataType = {
+    email: string
+    password: string
+}
 
 export default function SignInPage() {
+    const router = useRouter()
+    const {
+        register,
+        handleSubmit,
+        formState: { errors },
+    } = useForm<formDataType>()
+    const onSubmit: SubmitHandler<formDataType> = async (data) => {
+        const res = await SignIn(data);
+
+        if (!res.success) {
+            toast.error(res.error);
+            return;
+        }
+
+        if (res.data?.user.emailVerified) {
+            console.log("User signed in");
+
+            router.push("/dashboard");
+        } else {
+            router.push("/auth/verify");
+        }
+    }
     return (
         <>
             <div className="min-h-screen flex items-center justify-center">
 
-                <form className='panel h-auto rounded-lg overflow-y-none w-[min(360px,92vw)] p-[clamp(20px,5vw,28px)] max-h-[min(560px,90vh)]' action="">
+                <form onSubmit={handleSubmit(onSubmit)} className='panel h-auto rounded-lg overflow-y-none w-[min(360px,92vw)] p-[clamp(20px,5vw,28px)] max-h-[min(560px,90vh)]' action="">
                     <div className='flex items-center gap-1 my-6 justify-center  '>
                         <span className='w-3 block h-3 rounded-full bg-[#E5484D] animate-pulse'></span>
                         <p className='font-bold text-md'>INCIDENT PULSE</p>
@@ -16,19 +50,21 @@ export default function SignInPage() {
                  || email */}
                     <div className='flex flex-col gap-1 mt-10'>
                         <label className=' secondary-text pl-2 text-xs ' htmlFor="email">Email</label>
-                        <input className='panel h-10 rounded-md text-sm pl-2 ' type="email" name="email" id="email" placeholder='daniel@fiserv.example' />
+                        <input
+                            {...register("email", {
+                                required: "Email is required",
+                                pattern: {
+                                    value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                                    message: "Please enter a valid email address",
+                                },
+                            })}
+                            className='panel h-10 rounded-md text-sm pl-2 ' type="email" name="email" id="email" placeholder='daniel@fiserv.example' />
                     </div>
-
-                    {/* name */}
-                    {/* <div className='flex flex-col gap-1 mt-10'>
-                    <label className=' secondary-text pl-2 text-xs ' htmlFor="email">Name</label>
-                    <input className='panel h-10 rounded-md text-sm pl-2 ' type="text" name="name" id="name" placeholder='John Doe' />
-                </div> */}
 
                     {/* password */}
                     <div className='flex flex-col gap-1 mt-10'>
-                        <label className=' secondary-text pl-2 text-xs ' htmlFor="password">password</label>
-                        <input className='panel h-10 rounded-md text-sm pl-2 ' type="password" name="password" id="password" placeholder='***********' />
+                        <PasswordInput register={register} />
+                        {errors.password && <span className='error_message text-xs '>{errors.password.message}</span>}
                     </div>
 
 
@@ -44,10 +80,6 @@ export default function SignInPage() {
                     </div>
 
                     <Link className='panel secondary-text hover:text-white! hover:border-[#4e5564]! text-xs text-center block border p-2 rounded-lg' href={'/status'}>View public status page — no sign-in required</Link>
-
-
-
-
                 </form>
             </div>
 
