@@ -23,6 +23,7 @@ export const SignUp = async ({ name, email, password, }: LoginType) => {
 
         return {
             success: true,
+            message: "Account Created",
             data,
             error: null,
         };

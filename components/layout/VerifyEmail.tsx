@@ -1,0 +1,122 @@
+"use client";
+
+import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+
+const OTP_LENGTH = 5;
+const RESEND_SECONDS = 50;
+
+
+
+export default function VerifyEmail() {
+    const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
+    const [secondsLeft, setSecondsLeft] = useState(RESEND_SECONDS);
+    const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
+    const searchparams = useSearchParams()
+    const email = searchparams.get("email")
+
+    useEffect(() => {
+        if (secondsLeft <= 0) return;
+        const t = setInterval(() => setSecondsLeft((s) => s - 1), 1000);
+        return () => clearInterval(t);
+    }, [secondsLeft]);
+
+    function handleChange(index: number, value: string) {
+        if (!/^[0-9]?$/.test(value)) return;
+        const next = [...otp];
+        next[index] = value;
+        setOtp(next);
+        if (value && index < OTP_LENGTH - 1) {
+            inputsRef.current[index + 1]?.focus();
+        }
+    }
+
+    function handleKeyDown(index: number, e: React.KeyboardEvent<HTMLInputElement>) {
+        if (e.key === "Backspace" && !otp[index] && index > 0) {
+            inputsRef.current[index - 1]?.focus();
+        }
+    }
+
+    function handleResend() {
+        if (secondsLeft > 0) return;
+        setSecondsLeft(RESEND_SECONDS);
+        // TODO: call resend-OTP endpoint here
+    }
+
+    function handleVerify() {
+        const code = otp.join("");
+        // TODO: submit code to verify endpoint here
+    }
+
+    return (
+        <main className="min-h-screen flex items-center justify-center bg-[#0E1015] p-4">
+            <div className="relative w-[min(400px,92vw)] rounded-xl border border-[#262B36] bg-[#15181F] p-6 sm:p-9 text-center">
+                <button
+                    aria-label="Close"
+                    className="absolute top-3.5 right-3.5 text-[#565C6B] hover:text-[#E7E9EE] text-lg"
+                >
+                    ×
+                </button>
+
+                <div className="flex justify-center mb-4">
+                    <svg viewBox="0 0 64 64" width={52} height={52} fill="none">
+                        <rect x="6" y="20" width="52" height="34" rx="6" fill="#1B1F28" stroke="#33477a" strokeWidth="2" />
+                        <path d="M6 24 L32 42 L58 24" stroke="#5B8DEF" strokeWidth="2" fill="none" />
+                        <circle cx="20" cy="16" r="8" fill="#E5484D" />
+                        <rect x="17" y="22" width="6" height="10" rx="2" fill="#E5484D" />
+                    </svg>
+                </div>
+
+                <h1 className="text-[19px] text-[#E7E9EE] mb-2.5 font-semibold">
+                    Verify Your Email Address
+                </h1>
+                <p className="text-[13px] text-[#868C9C] leading-relaxed mb-6">
+                    We sent an email to your email address. Enter the 5-digit OTP code here.
+                </p>
+
+                <div className="flex justify-center gap-2.5 mb-5">
+                    {otp.map((digit, i) => (
+                        <input
+                            key={i}
+                            ref={(el) => { inputsRef.current[i] = el; }}
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={1}
+                            value={digit}
+                            onChange={(e) => handleChange(i, e.target.value)}
+                            onKeyDown={(e) => handleKeyDown(i, e)}
+                            className="w-11.5 h-13 text-center text-lg font-mono text-[#E7E9EE] bg-[#1B1F28] border border-[#262B36] rounded-lg outline-none focus:border-[#5B8DEF] focus:ring-2 focus:ring-[#5B8DEF]/15"
+                        />
+                    ))}
+                </div>
+
+                <div className="text-[12.5px] text-[#868C9C] mb-5">
+                    Want to change your email address?{" "}
+                    <a href="#" className="text-[#5B8DEF] underline">
+                        Change here
+                    </a>
+                </div>
+
+                <button
+                    onClick={handleVerify}
+                    className="w-full py-3 mb-3.5 rounded-lg bg-[#243352] border border-[#33477A] text-[#E7E9EE] text-sm font-semibold hover:border-[#4A63A0]"
+                >
+                    Verify Email
+                </button>
+
+                <button
+                    onClick={handleResend}
+                    disabled={secondsLeft > 0}
+                    className={`text-[12.5px] ${secondsLeft > 0
+                        ? "text-[#565C6B] cursor-default"
+                        : "text-[#5B8DEF] underline cursor-pointer"
+                        }`}
+                >
+                    {secondsLeft > 0
+                        ? `Resend code in 0:${String(secondsLeft).padStart(2, "0")}`
+                        : "Resend code"}
+                </button>
+            </div>
+        </main>
+    );
+}
