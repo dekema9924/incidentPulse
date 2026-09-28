@@ -8,7 +8,7 @@ import PasswordInput from '@/components/ui/Passwordinput'
 import { SignUp } from '@/src/lib/auth-actions'
 import toast from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
-
+import { SendVerificationOTP } from '@/src/lib/auth-actions'
 
 
 
@@ -33,12 +33,24 @@ export default function SignUpPage() {
             return;
         }
         if (res.message && res.success) {
-            toast.success(res?.message)
-            //navigate to email verification
-            router.push(`/auth/verify?email=${encodeURIComponent(data.email)}`);
+            toast.success(res.message);
+
+            if (!res.data.user.emailVerified) {
+                const otpRes = await SendVerificationOTP(
+                    data.email,
+                    "email-verification"
+                );
+
+                if (!otpRes.success) {
+                    toast.error(otpRes.error);
+                    return;
+                }
+
+                router.push(
+                    `/auth/verify?email=${encodeURIComponent(data.email)}`
+                );
+            }
         }
-
-
     }
 
 

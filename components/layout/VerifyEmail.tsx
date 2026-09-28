@@ -1,9 +1,12 @@
 "use client";
 
+import { SendVerificationOTP, VerifyOTP } from "@/src/lib/auth-actions";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
-const OTP_LENGTH = 5;
+const OTP_LENGTH = 6;
 const RESEND_SECONDS = 50;
 
 
@@ -14,6 +17,9 @@ export default function VerifyEmail() {
     const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
     const searchparams = useSearchParams()
     const email = searchparams.get("email")
+    const router = useRouter()
+
+
 
     useEffect(() => {
         if (secondsLeft <= 0) return;
@@ -37,15 +43,37 @@ export default function VerifyEmail() {
         }
     }
 
-    function handleResend() {
+    async function handleResend() {
         if (secondsLeft > 0) return;
         setSecondsLeft(RESEND_SECONDS);
         // TODO: call resend-OTP endpoint here
+        if (email) {
+            const resend = await SendVerificationOTP(email, "email-verification")
+            if (resend.success) {
+                toast.success("OTP Sent")
+            }
+        }
     }
 
-    function handleVerify() {
+    async function handleVerify() {
         const code = otp.join("");
-        // TODO: submit code to verify endpoint here
+
+        if (!email) return;
+
+        const verify = await VerifyOTP(
+            email,
+            "email-verification",
+            code
+        );
+
+        if (!verify.success) {
+            toast.error(verify.error?.message ?? "Invalid verification code");
+            return;
+        }
+
+        toast.success("Email verified!");
+
+        router.push("/dashboard");
     }
 
     return (

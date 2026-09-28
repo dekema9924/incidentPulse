@@ -5,7 +5,7 @@ import { useForm, SubmitHandler } from "react-hook-form"
 import PasswordInput from '@/components/ui/Passwordinput'
 import toast from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
-import { SignIn } from '@/src/lib/auth-actions'
+import { SendVerificationOTP, SignIn } from '@/src/lib/auth-actions'
 
 
 type formDataType = {
@@ -23,17 +23,28 @@ export default function SignInPage() {
     const onSubmit: SubmitHandler<formDataType> = async (data) => {
         const res = await SignIn(data);
 
+
+        if (res.requiresVerification) {
+            await SendVerificationOTP(
+                data.email,
+                "email-verification"
+            );
+
+            router.push(
+                `/auth/verify?email=${encodeURIComponent(data.email)}`
+            );
+
+            return;
+        }
+
         if (!res.success) {
             toast.error(res.error);
             return;
         }
 
-        if (res.data?.user.emailVerified) {
-            console.log("User signed in");
-            router.push("/dashboard");
-        } else {
-            router.push("/auth/verify");
-        }
+        router.push("/dashboard");
+        toast.success("Signed In")
+
     }
     return (
         <>
