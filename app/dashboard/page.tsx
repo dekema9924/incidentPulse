@@ -1,19 +1,43 @@
-'use server'
-import { auth } from '@/src/lib/auth'
-import { headers } from 'next/headers'
-import React from 'react'
+'use client'
 
-export default async function Dashboardpage() {
-    const session = await auth.api.getSession({
-        headers: await headers()
-    })
+import Incidents from '@/components/layout/Dashboard/Incidents';
+import MyIncidents from '@/components/layout/Dashboard/MyIncidents';
+import { useDashboardContext } from '@/context/DashboardContext'
+import Calendar from '@/components/layout/Dashboard/Calendar';
+import Settings from '@/components/layout/Dashboard/Settings';
+import DashboardPage from '../page';
 
-    console.log("DASHBOARD SESSION:", session);
+export default function page() {
+    const { isActiveId } = useDashboardContext()
 
+    const renderPage = () => {
+        switch (isActiveId) {
+            case 1:
+                return <DashboardPage />;
+
+            case 2:
+                return <Incidents />;
+
+            case 3:
+                return <MyIncidents />;
+
+            case 4:
+                return <Calendar />;
+
+            case 5:
+                return <Settings />;
+
+            default:
+                return <DashboardPage />;
+        }
+    };
     return (
         <>
-            <main className='p-2'>
-                Dashboard page
+            <main className='p-3'>
+                {
+                    renderPage()
+                }
+
             </main>
         </>
     )

@@ -1,4 +1,4 @@
-import SignInPage from "@/components/layout/Signin";
+import SignInPage from "@/components/layout/AuthLayout/Signin";
 import { RedirectIfVerified } from "@/src/lib/auth-utils";
 
 export default async function SignIn() {

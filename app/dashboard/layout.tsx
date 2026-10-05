@@ -1,8 +1,10 @@
 'use server'
 
-import DashboardHeader from '@/components/layout/DashboardHeader'
+import DashboardHeader from '@/components/layout/Dashboard/DashboardHeader'
 import { ReactNode } from 'react'
 import { RequireAuth } from '@/src/lib/auth-utils'
+import DashboardSideBar from '@/components/layout/Dashboard/DashboardSideBar'
+import { DashboardContextProvider } from '@/context/DashboardContext'
 
 export default async function Dashboardlayout({ children }: { children: ReactNode }) {
 
@@ -11,10 +13,20 @@ export default async function Dashboardlayout({ children }: { children: ReactNod
 
     return (
         <>
-            <div className=''>
-                <DashboardHeader />
-                {children}
-            </div>
+            <DashboardContextProvider>
+                <div className="flex min-h-screen">
+                    {/* Left side */}
+                    <div className="min-h-screen">
+                        <DashboardSideBar />
+                    </div>
+
+                    {/* Right side */}
+                    <div className="flex-1">
+                        <DashboardHeader />
+                        {children}
+                    </div>
+                </div>
+            </DashboardContextProvider>
         </>
     )
 }

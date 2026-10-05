@@ -82,6 +82,25 @@ export const SignIn = async ({ email, password, }: SignInType) => {
 };
 
 
+//signout
+export const SignOut = async () => {
+    try {
+        const res = await auth.api.signOut({
+            headers: await headers()
+        })
+
+        return res
+    } catch (err) {
+        if (err) return {
+            success: false,
+            error: err,
+            message: "error signing out"
+        }
+    }
+}
+
+
+
 
 //email OTP
 export const SendVerificationOTP = async (

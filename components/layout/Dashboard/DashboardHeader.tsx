@@ -1,6 +1,6 @@
 import CurrentDateWidget from '@/utils/CurrentDateWidget'
 import Link from 'next/link'
-import Button from '../ui/Button'
+import LogOutBtn from '../../ui/LogOutBtn'
 
 export default function DashboardHeader() {
 
@@ -24,10 +24,9 @@ export default function DashboardHeader() {
                         <span className='block secondary-text text-xs'>2 active</span>
                         <Link className='panel px-4 secondary-text hover:text-white! hover:border-[#4e5564]! text-xs text-center block border p-2 rounded-lg' href={'/status'}>View public status page — no sign-in required</Link>
                         <div className=' secondary-text text-xs flex items-center gap-1'>
-                            <span className='bg-blue-600 w-6  flex items-center justify-center h-6  rounded-full text-blue-300'>D</span>
-                            <span className='font-bold block'>Daniel</span>
+                            <span className='rounded-md w-7 h-7 p-2 flex items-center justify-center shrink-0 text-[#5b8def] bg-[#0d3179]'>DE</span>
                         </div>
-                        <Button className='w-22 mx-2 h-10 text-sm font-bold' text='LogOut' />
+                        <LogOutBtn />
                     </div>
                 </header>
                 <p className='panel text-xs secondary-text p-2'>Simulation. The escalation countdown, incoming teammate messages, and postmortem draft all run live in your browser — standing in for what WebSockets + the Claude API would do server-side. Signing in with different personas doesn't yet sync across real separate sessions (no backend behind this yet).</p>
