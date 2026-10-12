@@ -51,14 +51,14 @@ export default function SignInPage() {
             <div className="min-h-screen flex items-center justify-center">
 
                 <form onSubmit={handleSubmit(onSubmit)} className='panel h-auto rounded-lg overflow-y-none w-[min(360px,92vw)] p-[clamp(20px,5vw,28px)] max-h-[min(560px,90vh)]' action="">
-                    <div className='flex items-center gap-1 my-6 justify-center  '>
+                    <div className='flex items-center gap-1 my-3 justify-center  '>
                         <span className='w-3 block h-3 rounded-full bg-[#E5484D] animate-pulse'></span>
                         <p className='font-bold text-md'>INCIDENT PULSE</p>
                     </div>
 
                     {/* inputs
                  || email */}
-                    <div className='flex flex-col gap-1 mt-10'>
+                    <div className='flex flex-col gap-1 mt-3'>
                         <label className=' secondary-text pl-2 text-xs ' htmlFor="email">Email</label>
                         <input
                             {...register("email", {
@@ -72,7 +72,8 @@ export default function SignInPage() {
                     </div>
 
                     {/* password */}
-                    <div className='flex flex-col gap-1 mt-10'>
+
+                    <div className='flex flex-col gap-1 mt-3'>
                         <PasswordInput register={register} />
                         {errors.password && <span className='error_message text-xs '>{errors.password.message}</span>}
                     </div>

@@ -14,26 +14,30 @@ export default function PasswordInput({
     const [showPassword, setShowPassword] = useState(false);
 
     return (
-        <div className="flex items-center relative">
-            <input
-                {...register("password")}
-                className="panel h-10 rounded-md text-sm pl-2 w-full"
-                type={showPassword ? "text" : "password"}
-                id="password"
-                placeholder="***********"
-            />
+        <div className="flex flex-col gap-1">
+            <label className=' secondary-text pl-2 text-xs ' htmlFor="password">Password</label>
 
-            {showPassword ? (
-                <EyeOff
-                    onClick={() => setShowPassword(false)}
-                    className="absolute right-5 cursor-pointer text-gray-500 hover:text-white transition-all"
+            <div className="flex items-center relative">
+                <input
+                    {...register("password")}
+                    className="panel h-10 rounded-md text-sm pl-2 w-full"
+                    type={showPassword ? "text" : "password"}
+                    id="password"
+                    placeholder="***********"
                 />
-            ) : (
-                <Eye
-                    onClick={() => setShowPassword(true)}
-                    className="absolute right-5 cursor-pointer text-gray-500 hover:text-white transition-all"
-                />
-            )}
+
+                {showPassword ? (
+                    <EyeOff
+                        onClick={() => setShowPassword(false)}
+                        className="absolute right-5 cursor-pointer text-gray-500 hover:text-white transition-all"
+                    />
+                ) : (
+                    <Eye
+                        onClick={() => setShowPassword(true)}
+                        className="absolute right-5 cursor-pointer text-gray-500 hover:text-white transition-all"
+                    />
+                )}
+            </div>
         </div>
     );
 }

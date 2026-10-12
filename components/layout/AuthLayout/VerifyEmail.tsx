@@ -46,7 +46,7 @@ export default function VerifyEmail() {
     async function handleResend() {
         if (secondsLeft > 0) return;
         setSecondsLeft(RESEND_SECONDS);
-        // TODO: call resend-OTP endpoint here
+        // call resend-OTP endpoint here
         if (email) {
             const resend = await SendVerificationOTP(email, "email-verification")
             if (resend.success) {
@@ -72,7 +72,6 @@ export default function VerifyEmail() {
         }
 
         toast.success("Email verified!");
-
         router.push("/dashboard");
     }
 

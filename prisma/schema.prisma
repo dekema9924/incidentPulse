@@ -12,6 +12,142 @@ datasource db {
   provider = "postgresql"
 }
 
+
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum Severity{ 
+  P1
+  P2
+  P3
+}
+enum IncidentStatus { 
+  INVESTIGATING
+  IDENTIFIED 
+  MONITORING 
+  RESOLVED 
+}
+enum EventType {
+ MESSAGE
+ SYSTEM
+ ESCALATION
+ RESOLVE
+}
+
+enum InviteStatus   { 
+  PENDING 
+  ACCEPTED 
+  EXPIRED 
+  REVOKED
+ }
+
+enum RequestStatus  {
+   PENDING 
+   APPROVED 
+   DECLINED 
+}
+
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  memberships Membership[]
+  invitations Invitation[]
+  incidents   Incident[]
+}
+
+// This is where "admin vs regular user" actually lives
+model Membership {
+  id       String   @id @default(cuid())
+  role     Role     @default(MEMBER)
+  joinedAt DateTime @default(now())
+
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+}
+
+model Invitation {
+  id        String       @id @default(cuid())
+  email     String
+  role      Role         @default(MEMBER)
+  token     String       @unique
+  status    InviteStatus @default(PENDING)
+  expiresAt DateTime
+  createdAt DateTime     @default(now())
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String
+  invitedBy      User         @relation(fields: [invitedById], references: [id])
+  invitedById    String
+
+  @@index([organizationId, email])
+}
+
+model Incident {
+  id             String         @id @default(cuid())
+  number         Int            // human-friendly: INC-2041, unique per org
+  title          String
+  severity       Severity
+  status         IncidentStatus @default(INVESTIGATING)
+  createdAt      DateTime       @default(now())
+  acknowledgedAt DateTime?
+  escalatedAt    DateTime?
+  resolvedAt     DateTime?
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String
+  assignee       User?        @relation("Assignee", fields: [assigneeId], references: [id])
+  assigneeId     String?
+
+  timeline TimelineEvent[]
+  requests IncidentRequest[]
+
+  @@unique([organizationId, number])
+  @@index([organizationId, status])
+}
+
+model TimelineEvent {
+  id        String    @id @default(cuid())
+  type      EventType
+  text      String
+  createdAt DateTime  @default(now())
+
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  incidentId String
+  author     User?    @relation(fields: [authorId], references: [id])
+  authorId   String?  // null for automated events
+  source     String?  // "PagerDuty", "Datadog", "System" when there's no author
+
+  @@index([incidentId, createdAt])
+}
+
+// "Member asks to work on an incident, admin approves"
+model IncidentRequest {
+  id        String        @id @default(cuid())
+  status    RequestStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  incidentId String
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String
+
+  @@unique([incidentId, userId])
+}
+
 model User {
   id            String    @id
   name          String
@@ -23,6 +159,12 @@ model User {
   sessions      Session[]
   accounts      Account[]
 
+
+  memberships  Membership[]
+  assigned     Incident[]        @relation("Assignee")
+  requests     IncidentRequest[]
+  events       TimelineEvent[]
+  invitesSent  Invitation[]
   @@unique([email])
   @@map("user")
 }

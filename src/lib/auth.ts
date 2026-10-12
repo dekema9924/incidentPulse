@@ -14,6 +14,9 @@ export const auth = betterAuth({
         requireEmailVerification: true,
 
     },
+    session: {
+        expiresIn: 60 * 60 * 24 * 1
+    },
 
     plugins: [
         emailOTP({

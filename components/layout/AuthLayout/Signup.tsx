@@ -35,6 +35,7 @@ export default function SignUpPage() {
         if (res.message && res.success) {
             toast.success(res.message);
 
+            //semd otp
             if (!res.data.user.emailVerified) {
                 const otpRes = await SendVerificationOTP(
                     data.email,
@@ -62,7 +63,7 @@ export default function SignUpPage() {
 
                 {/* inputs
                  || email */}
-                <div className='flex flex-col gap-1 mt-10'>
+                <div className='flex flex-col gap-1 mt-3'>
                     <label className=' secondary-text pl-2 text-xs ' htmlFor="email">Email</label>
                     <input
                         {...register("email", {
@@ -77,7 +78,7 @@ export default function SignUpPage() {
                 </div>
 
                 {/* name */}
-                <div className='flex flex-col gap-1 mt-10'>
+                <div className='flex flex-col gap-1 mt-3'>
                     <label className=' secondary-text pl-2 text-xs ' htmlFor="email">Name</label>
                     <input
                         {...register("name", {
@@ -90,7 +91,7 @@ export default function SignUpPage() {
                 </div>
 
                 {/* password */}
-                <div className='flex flex-col gap-1 mt-10 '>
+                <div className='flex flex-col gap-1 mt-3 '>
                     <PasswordInput register={register} />
                     {errors.password && <span className='error_message text-xs '>{errors.password.message}</span>}
 
@@ -99,7 +100,7 @@ export default function SignUpPage() {
 
 
                 {/* submit btn */}
-                <Button className=' w-full my-6 h-8 border border-[#32519b] text-xs ' text='SignUp' />
+                <Button className=' w-full my-6 h-8 border border-[#32519b] text-xs ' text='Continue' />
 
                 <p className='secondary-text text-xs text-center my-2'>Already have an account? <Link className='text-blue-400/70' href={'/auth/sign-in'}>Sign-In Now</Link></p>
 

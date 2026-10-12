@@ -11,9 +11,9 @@ import { useState } from 'react';
 
 export default function DashboardSideBar() {
 
-    const { isActiveId, setIsActiveId } = useDashboardContext()
+    const { isActiveId, setIsActiveId, org, isAdmin, canPost } = useDashboardContext()
     const [sideBarOpen, setSideBarOpen] = useState<boolean>(true)
-
+    const isOwner = isAdmin ? "Admin" : "member"
     //set active tab to display 
     const handleActiveTab = (id: number) => {
         if (isActiveId != id) {
@@ -21,6 +21,8 @@ export default function DashboardSideBar() {
 
         }
     }
+
+    // console.log(isAdmin)
 
 
     //collapse sidebar on mobiile
@@ -45,11 +47,11 @@ export default function DashboardSideBar() {
                 {/* //ADD ORGANIZATION */}
                 <div className={`flex items-center ${sideBarOpen ? "justify-between" : "justify-center"}`}>
                     <div className={`flex items-center gap-2 ${!sideBarOpen && "justify-center"}`}>
-                        <span className='rounded-md w-7 h-7 p-2 flex items-center justify-center shrink-0 text-[#5b8def] bg-[#0d3179]'>DE</span>
+                        <span className='rounded-md w-7 h-7 p-2 flex items-center justify-center shrink-0 text-[#5b8def] bg-[#0d3179]'>{org.name.slice(0, 2).toUpperCase()}</span>
                         {sideBarOpen && (
                             <div>
-                                <p>Daniel</p>
-                                <span className='secondary-text block'>Owner</span>
+                                <p className='w-30'>{org.name}</p>
+                                <span className='secondary-text block'>{isOwner}</span>
                             </div>
                         )}
                     </div>
