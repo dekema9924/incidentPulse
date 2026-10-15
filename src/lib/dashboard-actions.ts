@@ -1,7 +1,7 @@
 // app/onboarding/organization/actions.ts
 'use server'
 import { Prisma } from '../generated/prisma/client'
-import { RequireOnboarding } from './auth-utils'
+import { RequireAuth, RequireOnboarding } from './auth-utils'
 import { prisma } from '@/src/lib/prisma'
 import { slugify } from '@/utils/slugify'      // same function the form uses
 
@@ -12,6 +12,8 @@ const RESERVED_SLUGS = new Set([
 
 type Result = { success: true; slug: string } | { success: false; error: string }
 
+
+//create organization
 export async function createOrganization(input: { name: string; slug?: string }): Promise<Result> {
     const session = await RequireOnboarding() // signed in, verified, and has no org yet
 
@@ -50,4 +52,69 @@ export async function createOrganization(input: { name: string; slug?: string })
     }
 
     return { success: false, error: 'That URL is taken. Try a different one.' }
+}
+
+
+
+//update organization
+type OrganizationResult =
+    | { success: true; name: string; slug: string }
+    | { success: false; error: string };
+
+export const updateOrganization = async ({
+    id,
+    name,
+    slug
+}: {
+    id: string
+    name: string
+    slug: string
+}
+
+): Promise<OrganizationResult> => {
+    const session = await RequireAuth() // keep this outside try/catch: redirect() works by throwing
+
+    const cleanName = name.trim()
+    if (cleanName.length < 2 || cleanName.length > 60) {
+        return { success: false, error: 'Organization name must be 2 to 60 characters.' }
+    }
+
+    const cleanSlug = slugify(slug)
+    if (!cleanSlug) {
+        return { success: false, error: 'Workspace URL needs at least one letter or number.' }
+    }
+    if (RESERVED_SLUGS.has(cleanSlug)) {
+        return { success: false, error: 'That workspace URL is reserved. Try another.' }
+    }
+
+    try {
+        // One query does the permission check and the update together.
+        // It only matches if this user is an OWNER or ADMIN of this org.
+        const result = await prisma.organization.updateMany({
+            where: {
+                id,
+                memberships: {
+                    some: { userId: session.user.id, role: { in: ['OWNER', 'ADMIN'] } },
+                },
+            },
+            data: { name: cleanName, slug: cleanSlug },
+        })
+
+        if (result.count === 0) {
+            return {
+                success: false,
+                error: "Workspace not found, or you don't have permission to change it.",
+            }
+        }
+
+        return { success: true, name: cleanName, slug: cleanSlug }
+    } catch (e) {
+        // P2002 = unique constraint failed, so another workspace already has this slug
+        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+            return { success: false, error: 'That workspace URL is already taken.' }
+        }
+
+        console.error('updateOrganization failed', e) // full error stays in your server logs
+        return { success: false, error: 'Something went wrong. Please try again.' }
+    }
 }

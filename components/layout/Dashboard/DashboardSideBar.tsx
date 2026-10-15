@@ -11,7 +11,7 @@ import { useState } from 'react';
 
 export default function DashboardSideBar() {
 
-    const { isActiveId, setIsActiveId, org, isAdmin, canPost } = useDashboardContext()
+    const { isActiveId, setIsActiveId, org, isAdmin } = useDashboardContext()
     const [sideBarOpen, setSideBarOpen] = useState<boolean>(true)
     const isOwner = isAdmin ? "Admin" : "member"
     //set active tab to display 
