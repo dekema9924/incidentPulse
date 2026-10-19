@@ -7,6 +7,7 @@ import { slugify } from '@/utils/slugify'
 import Account from './Account'
 import { authClient } from '@/src/lib/auth-client'
 import { updateOrganization } from '@/src/lib/dashboard-actions'
+import Members from './member/Members'
 
 
 
@@ -144,7 +145,7 @@ export default function Settings() {
                 </form>
             )}
 
-            {tab === 'members' && <div className="mt-5">{/* TODO: <MembersTab /> */}</div>}
+            {tab === 'members' && <div className="mt-5"><Members /></div>}
             {tab === 'account' && <div className="mt-5"><Account /></div>}
         </main>
     )

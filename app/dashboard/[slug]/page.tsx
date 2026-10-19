@@ -3,7 +3,7 @@
 import MyIncidents from '@/components/layout/Dashboard/MyIncidents';
 import { useDashboardContext } from '@/context/DashboardContext'
 import Calendar from '@/components/layout/Dashboard/Calendar';
-import Settings from '@/components/layout/settings/Settings';
+import Settings from '@/components/layout/settings/General';
 import DashboardPage from '../../page';
 import IncidentsPage from '@/components/layout/Dashboard/IncidentsPage';
 
