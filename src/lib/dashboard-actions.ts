@@ -1,9 +1,10 @@
 // app/onboarding/organization/actions.ts
 'use server'
 import { Prisma } from '../generated/prisma/client'
-import { RequireAuth, RequireOnboarding } from './auth-utils'
+import { RequireAuth, RequireDashboard, RequireOnboarding } from './auth-utils'
 import { prisma } from '@/src/lib/prisma'
 import { slugify } from '@/utils/slugify'      // same function the form uses
+import { createOrganizationForUser } from './org-access'
 
 const RESERVED_SLUGS = new Set([
     'dashboard', 'onboarding', 'auth', 'api', 'settings',
@@ -13,7 +14,7 @@ const RESERVED_SLUGS = new Set([
 type Result = { success: true; slug: string } | { success: false; error: string }
 
 
-//create organization
+//create organization. first org
 export async function createOrganization(input: { name: string; slug?: string }): Promise<Result> {
     const session = await RequireOnboarding() // signed in, verified, and has no org yet
 
@@ -54,6 +55,13 @@ export async function createOrganization(input: { name: string; slug?: string })
     return { success: false, error: 'That URL is taken. Try a different one.' }
 }
 
+
+
+// extra orgs, from the sidebar modal (requires signed in, verified, and already in an org)
+export const createAdditionalOrganization = async (input: { name: string; slug?: string }) => {
+    const session = await RequireDashboard()
+    return createOrganizationForUser(session.user.id, input)
+}
 
 
 //update organization

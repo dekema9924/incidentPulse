@@ -8,17 +8,19 @@ import { Cog } from 'lucide-react';
 import { CalendarDays } from 'lucide-react';
 import { TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
+import OrgSwitcher from '../Organization/OrgSwitcher';
 
 export default function DashboardSideBar() {
 
     const { isActiveId, setIsActiveId, org, isAdmin } = useDashboardContext()
     const [sideBarOpen, setSideBarOpen] = useState<boolean>(true)
     const isOwner = isAdmin ? "Admin" : "member"
-    //set active tab to display 
+    const [newOrgModalOpen, setNewOrgModal] = useState<boolean>(false)
+
+    //set active tab to display on dashboard panel
     const handleActiveTab = (id: number) => {
         if (isActiveId != id) {
             setIsActiveId(id)
-
         }
     }
 
@@ -45,8 +47,15 @@ export default function DashboardSideBar() {
 
 
                 {/* //ADD ORGANIZATION */}
-                <div className={`flex items-center ${sideBarOpen ? "justify-between" : "justify-center"}`}>
-                    <div className={`flex items-center gap-2 ${!sideBarOpen && "justify-center"}`}>
+                <button
+                    type="button"
+                    onClick={() => setNewOrgModal(!newOrgModalOpen)}
+                    aria-expanded={newOrgModalOpen}
+                    aria-label="Switch organization"
+                    title={!sideBarOpen ? org.name : undefined}
+                    className={`group relative flex w-full cursor-pointer items-center gap-2 rounded-md p-1.5 text-left transition-colors hover:bg-[#1B1F28] ${sideBarOpen ? "justify-between" : "justify-center"
+                        } ${newOrgModalOpen ? "bg-[#1B1F28]" : ""}`}
+                >                    <div className={`flex items-center gap-2 ${!sideBarOpen && "justify-center"}`}>
                         <span className='rounded-md w-7 h-7 p-2 flex items-center justify-center shrink-0 text-[#5b8def] bg-[#0d3179]'>{org.name.slice(0, 2).toUpperCase()}</span>
                         {sideBarOpen && (
                             <div>
@@ -55,10 +64,18 @@ export default function DashboardSideBar() {
                             </div>
                         )}
                     </div>
-                    {sideBarOpen && (
-                        <PlusCircleIcon className='secondary-text cursor-pointer hover:text-white! w-5 shrink-0' />
-                    )}
-                </div>
+                    {/* {sideBarOpen && (
+                        <PlusCircleIcon onClick={() => setNewOrgModal(!newOrgModalOpen)} className='secondary-text cursor-pointer  w-5 shrink-0' />
+                    )} */}
+
+                    {
+                        newOrgModalOpen && (
+
+                            <OrgSwitcher />
+
+                        )
+                    }
+                </button>
 
 
                 <ul className='dashboard-list-style secondary-text mt-10 flex flex-col gap-1'>
