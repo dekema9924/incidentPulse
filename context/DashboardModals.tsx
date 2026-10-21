@@ -1,38 +1,32 @@
-
 'use client'
 import React, { useState, createContext, useContext, Dispatch, SetStateAction } from "react";
 
-
-
-type newOrgModalType = {
+type OrgModalType = {
     newOrgOpen: boolean
     setNewOrgOpen: Dispatch<SetStateAction<boolean>>
+    inviteOpen: boolean
+    setInviteOpen: Dispatch<SetStateAction<boolean>>
 }
 
-
-const newOrgModalContext = createContext<newOrgModalType | undefined>(undefined)
-
+const OrgModalContext = createContext<OrgModalType | undefined>(undefined)
 
 export const OrgModalContextProvider = ({ children }: { children: React.ReactNode }) => {
     const [newOrgOpen, setNewOrgOpen] = useState<boolean>(false)
-
-
+    const [inviteOpen, setInviteOpen] = useState<boolean>(false)
 
     return (
-        <newOrgModalContext.Provider value={{ newOrgOpen, setNewOrgOpen }}>
+        <OrgModalContext.Provider value={{ newOrgOpen, setNewOrgOpen, inviteOpen, setInviteOpen }}>
             {children}
-        </newOrgModalContext.Provider>
+        </OrgModalContext.Provider>
     )
-
 }
 
-
 export const useOrgModalContext = () => {
-    const context = useContext(newOrgModalContext);
+    const context = useContext(OrgModalContext);
 
     if (!context) {
         throw new Error(
-            "useOrgModalContext must be used within DashboardContextProvider"
+            "useOrgModalContext must be used within OrgModalContextProvider"
         );
     }
 

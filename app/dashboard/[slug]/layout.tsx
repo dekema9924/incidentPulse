@@ -5,7 +5,7 @@ import DashboardSideBar from '@/components/layout/Dashboard/DashboardSideBar'
 import { DashboardContextProvider } from '@/context/DashboardContext'
 import { getUserOrgs, requireOrgAccess } from '@/src/lib/org-access'
 import { OrgModalContextProvider } from '@/context/DashboardModals'
-import RenderNewOrgModal from '@/components/layout/Organization/RenderNewOrgModal'
+import RenderModals from '@/components/layout/Organization/RenderModals'
 
 export default async function DashboardLayout({
     children,
@@ -34,7 +34,7 @@ export default async function DashboardLayout({
                         {children}
                     </div>
                 </div>
-                <RenderNewOrgModal />
+                <RenderModals />
 
             </OrgModalContextProvider>
 
