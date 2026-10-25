@@ -29,7 +29,7 @@ export default function Settings() {
     const router = useRouter()
     const { org, isAdmin } = useDashboardContext()
 
-    console.log(org)
+    // console.log(org)
 
     const [tab, setTab] = useState<Tab>('general')
     const [name, setName] = useState(org.name)

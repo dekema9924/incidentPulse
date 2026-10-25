@@ -1,6 +1,5 @@
 
 'use client'
-import Button from '@/components/ui/Button'
 import AllMembers from './AllMembers'
 import { useDashboardContext } from '@/context/DashboardContext'
 import { useOrgModalContext } from '@/context/DashboardModals'
@@ -9,7 +8,7 @@ export default function Members() {
     const { isAdmin } = useDashboardContext()
     const { setInviteOpen, inviteOpen } = useOrgModalContext()
 
-    console.log({ "isAdmin": isAdmin, "inviteOpen": inviteOpen })
+    // console.log({ "isAdmin": isAdmin, "inviteOpen": inviteOpen })
     return (
         <>
             <main className='w-11/12'>

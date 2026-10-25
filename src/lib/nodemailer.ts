@@ -1,7 +1,7 @@
 import nodemailer from "nodemailer";
 
 // Create a transporter using SMTP
-const transporter = nodemailer.createTransport({
+export const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
         user: process.env.GOOGLE_EMAIL,

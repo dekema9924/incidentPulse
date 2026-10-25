@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { useDashboardContext } from '@/context/DashboardContext'
+import { inviteMember } from '@/src/lib/dashboard-actions'
+import toast from 'react-hot-toast'
 
 type InviteRole = 'ADMIN' | 'MEMBER' | 'VIEWER' // no OWNER: ownership is never given by invitation
 
@@ -49,12 +51,18 @@ export default function InviteMemberModal({ onClose }: { onClose: () => void }) 
         setError(null)
         setLoading(true)
         try {
-            // TODO: call your invite server action here
-            // const result = await inviteMember({ slug: org.slug, email: cleanEmail, role })
-            // if (!result.success) { setError(result.error); return }
-            //
-            // onClose()
-            // router.refresh() // re-fetch so the new pending invitation appears in the list
+            // nvite server action 
+            const result = await inviteMember({ slug: org.slug, email: cleanEmail, role })
+            // console.log("result", result)
+            if (!result.success) {
+                setError(result.error); toast.error(result.error)
+                return
+            }
+            toast.success("email sent successfully")
+
+
+            onClose()
+            router.refresh() // re-fetch so the new pending invitation appears in the list
         } catch {
             setError('Something went wrong. Please try again.')
         } finally {

@@ -1,6 +1,10 @@
 'use server'
 import { auth } from '@/src/lib/auth'
 import { headers } from 'next/headers'
+import { prisma } from './prisma'
+import { hashToken } from '@/utils/invite-token'
+import { claimInvitation } from './accept-invite'
+import { findInvitationByToken, getValidInvitation } from '@/utils/Invitation'
 
 
 type LoginType = {
@@ -144,7 +148,7 @@ export const VerifyOTP = async (
             },
         });
 
-        console.log("otpdata", data)
+        // console.log("otpdata", data)
 
         return {
             success: true,
@@ -161,3 +165,52 @@ export const VerifyOTP = async (
         };
     }
 };
+
+
+type MemberSignUpInput = { token: string; name: string; password: string } // no email field
+
+export const MemberSignUp = async ({ token, name, password }: MemberSignUpInput) => {
+    // 1. the invitation decides org, role and email
+    const invite = await getValidInvitation(token)
+    if (!invite) {
+        return { success: false as const, error: 'This invitation is invalid or has expired.' }
+    }
+    // 2. already has an account? they should sign in instead (your invite page can redirect them there)
+    const existing = await prisma.user.findUnique({
+        where: { email: invite.email },
+        select: { id: true },
+    })
+    if (existing) {
+        return {
+            success: false as const,
+            error: 'An account with this email already exists. Please sign in to accept the invitation.',
+        }
+    }
+
+    try {
+        // 3. create the account using the invited email
+        const res = await SignUp({ name, email: invite.email, password })
+        if (!res.success) {
+            return { success: false as const, error: 'Could not create your account.' }
+        }
+
+        const user = await prisma.user.findUnique({
+            where: { email: invite.email },
+            select: { id: true },
+        })
+        if (!user) throw new Error('User missing after sign-up')
+
+        // 4. optional: clicking the emailed link already proves they own this inbox,
+        //    so you can skip the OTP step
+        await prisma.user.update({ where: { id: user.id }, data: { emailVerified: true } })
+
+        // 5. join the org with the role from the invitation
+        await claimInvitation(user.id, invite)
+
+        // 6. sign them in here with whatever your login helper is, then send them in
+        return { success: true as const, slug: invite.organization.slug }
+    } catch (e) {
+        console.error('MemberSignUp failed', e)
+        return { success: false as const, error: 'Something went wrong. Please try again.' }
+    }
+}

@@ -1,8 +1,12 @@
+'use client'
 import CurrentDateWidget from '@/utils/CurrentDateWidget'
 import Link from 'next/link'
 import LogOutBtn from '../../ui/LogOutBtn'
+import { authClient } from '@/src/lib/auth-client'
+
 
 export default function DashboardHeader() {
+    const { data: sesison } = authClient.useSession()
 
     return (
         <>
@@ -24,7 +28,7 @@ export default function DashboardHeader() {
                         <span className='block secondary-text text-xs'>2 active</span>
                         <Link className='panel px-4 secondary-text hover:text-white! hover:border-[#4e5564]! text-xs text-center block border p-2 rounded-lg' href={'/status'}>View public status page — no sign-in required</Link>
                         <div className=' secondary-text text-xs flex items-center gap-1'>
-                            <span className='rounded-md w-7 h-7 p-2 flex items-center justify-center shrink-0 text-[#5b8def] bg-[#0d3179]'>DE</span>
+                            <span className='rounded-md w-7 h-7 p-2 flex items-center justify-center shrink-0 text-[#5b8def] bg-[#0d3179] uppercase'>{sesison?.user.name.slice(0, 1)}</span>
                         </div>
                         <LogOutBtn />
                     </div>
