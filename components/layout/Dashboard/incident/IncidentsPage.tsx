@@ -1,7 +1,10 @@
 import Button from '@/components/ui/Button'
-import { PlusIcon } from 'lucide-react'
+import { MinusIcon, PlusIcon } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
-
+import NewIncidentForm from './NewIncidentForm'
+import { useDashboardContext } from '@/context/DashboardContext'
+import { getIncidents } from '@/src/lib/incident-actions'
+import { IncidentListItem } from '@/src/lib/incident-actions'
 
 
 type Severity = 'P1' | 'P2' | 'P3'
@@ -33,92 +36,29 @@ const STATUS_PILL: Record<Status, string> = {
 
 
 
-interface IncidentInterface {
-    id: string
-    title: string
-    severity: Severity
-    status: Status
-    opened: number
-    acked: boolean
-    escalated: boolean
-    escalateSecondsLeft: number
-    assignee: string | null
-    requests: string[]
-    timeline: TimelineInterface[]
-}
-
-
-const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-
-
-const buildSeed = (): IncidentInterface[] => {
-    const now = Date.now()
-    return [
-        {
-            id: 'INC-2041',
-            title: 'Payment gateway returning 502s for EU region',
-            severity: 'P1',
-            status: 'Investigating',
-            opened: now - 4 * 60000,
-            acked: false,
-            escalated: false,
-            escalateSecondsLeft: 60,
-            assignee: null,
-            requests: [],
-            timeline: [
-                { id: uid(), author: 'PagerDuty', time: now - 4 * 60000, type: 'system', text: 'Alert fired: error rate >5% on payments-eu-gateway.' },
-                { id: uid(), author: 'Priya R.', time: now - 3 * 60000, type: 'msg', text: 'On it, pulling gateway logs now.' },
-            ],
-        },
-        {
-            id: 'INC-2042',
-            title: 'Elevated latency on account balance API',
-            severity: 'P2',
-            status: 'Identified',
-            opened: now - 18 * 60000,
-            acked: true,
-            escalated: false,
-            escalateSecondsLeft: 0,
-            assignee: 'Marcus T.',
-            requests: [],
-            timeline: [
-                { id: uid(), author: 'Datadog', time: now - 18 * 60000, type: 'system', text: 'Alert fired: p95 latency 3x baseline on /accounts/balance.' },
-                { id: uid(), author: 'Marcus T.', time: now - 15 * 60000, type: 'msg', text: 'Acknowledged. Looks like connection pool exhaustion.' },
-            ],
-        },
-        {
-            id: 'INC-2038',
-            title: 'Nightly batch reconciliation job failed',
-            severity: 'P3',
-            status: 'Resolved',
-            opened: now - 3 * 3600000,
-            acked: true,
-            escalated: false,
-            escalateSecondsLeft: 0,
-            assignee: 'Elena K.',
-            requests: [],
-            timeline: [
-                { id: uid(), author: 'Cron Monitor', time: now - 3 * 3600000, type: 'system', text: 'Job recon-nightly exited with code 1.' },
-                { id: uid(), author: 'Elena K.', time: now - 2 * 3600000, type: 'resolve', text: 'Job completed on manual rerun. Resolving.' },
-            ],
-        },
-    ]
-}
 
 
 
 export default function IncidentsPage() {
-    const [incidents, setIncidents] = useState<IncidentInterface[]>([])
+    const [incidents, setIncidents] = useState<IncidentListItem[]>([])
     const [selectedId, setSelectedId] = useState<string | null>(null)
     const selectedIncident = incidents.find((i) => i.id == selectedId)
+    const [openIncidentModal, setOpenIncidentModal] = useState<boolean>(false)
+    const { org } = useDashboardContext()
+    const [version, setVersion] = useState(0) // bump to refetch after creating an incident
+
 
     useEffect(() => {
-        const seed = buildSeed()
-        setIncidents(seed)
-        setSelectedId(seed[0].id)
-    }, [])
+        let cancelled = false
 
-    console.log(selectedIncident)
+        getIncidents(org.slug)
+            .then(data => { if (!cancelled) setIncidents(data) })
+            .catch(() => { if (!cancelled) setIncidents([]) })
+
+        return () => { cancelled = true }
+    }, [org.slug, version])
+
+    // console.log(selectedIncident)
     const openDate = selectedIncident?.opened ? new Date(selectedIncident?.opened).toLocaleString("en-US", {
         month: "short",
         day: "numeric",
@@ -134,8 +74,19 @@ export default function IncidentsPage() {
             <section>
                 <div className='flex items-center gap-4 my-2'>
                     <span className='secondary-text text-xs'>INCDENT QUEQUE</span>
-                    <p className='panel cursor-pointer w-fit! flex text-xs items-center px-3 rounded-md'><PlusIcon className='w-4' />New</p>
+                    <p onClick={() => setOpenIncidentModal(!openIncidentModal)} className='panel cursor-pointer w-fit! h-6! flex text-xs items-center px-3 rounded-md'>{openIncidentModal ? "" : <PlusIcon className='w-4' />}{openIncidentModal ? "Cancel" : "New"}</p>
                 </div>
+                {
+                    openIncidentModal && (
+                        <NewIncidentForm
+                            onCreated={id => {
+                                setVersion(v => v + 1)        // the effect keyed on `version` refetches getIncidents
+                                setSelectedId(id)             // open the incident you just created
+                                setOpenIncidentModal(false)   // close the form
+                            }}
+                        />
+                    )
+                }
 
                 {incidents.map(inc => (
                     <button
@@ -144,7 +95,7 @@ export default function IncidentsPage() {
                         className={`flex w-full gap-3 px-4 py-3 text-left border-b border-[#262B36] hover:bg-[#15181F] ${inc.id === selectedId ? 'bg-[#1B1F28]' : ''
                             }`}
                     >
-                        <span className={`w-[3px] rounded-sm shrink-0 ${SEV_BAR[inc.severity]}`} />
+                        <span className={`w-0.75 rounded-sm shrink-0 ${SEV_BAR[inc.severity]}`} />
                         <span className="min-w-0">
                             <span className="block text-[13px] leading-snug mb-1.5">{inc.title}</span>
                             <span className="flex flex-wrap items-center gap-2 font-mono text-[11px] text-[#868C9C]">

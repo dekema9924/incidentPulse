@@ -43,7 +43,7 @@ export async function RedirectIfVerified() {
     redirect(orgs === 0 ? '/onboarding/organization' : '/dashboard')
 }
 
-// /onboarding/organization page: verified AND no org yet
+// /onboarding/organization page: verified AND has an org
 export const RequireOnboarding = async () => {
     const session = await RequireAuth()
 
@@ -55,7 +55,7 @@ export const RequireOnboarding = async () => {
 
 
 
-// /dashboard layout: verified AND has at least one org
+// /dashboard layout: verified AND has no org
 export const RequireDashboard = async () => {
     const session = await RequireAuth()
 

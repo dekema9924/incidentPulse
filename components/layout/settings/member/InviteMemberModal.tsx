@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useDashboardContext } from '@/context/DashboardContext'
 import { inviteMember } from '@/src/lib/dashboard-actions'
 import toast from 'react-hot-toast'
+import { useOrgModalContext } from '@/context/DashboardModals'
 
 type InviteRole = 'ADMIN' | 'MEMBER' | 'VIEWER' // no OWNER: ownership is never given by invitation
 
@@ -23,6 +24,7 @@ export default function InviteMemberModal({ onClose }: { onClose: () => void }) 
     const [role, setRole] = useState<InviteRole>('MEMBER')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const { refreshInvites } = useOrgModalContext()
 
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
@@ -61,8 +63,10 @@ export default function InviteMemberModal({ onClose }: { onClose: () => void }) 
             toast.success("email sent successfully")
 
 
+
+
             onClose()
-            router.refresh() // re-fetch so the new pending invitation appears in the list
+            refreshInvites() // re-fetch so the new pending invitation appears in the list
         } catch {
             setError('Something went wrong. Please try again.')
         } finally {

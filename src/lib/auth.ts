@@ -2,7 +2,7 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "./prisma";
 import { nextCookies } from "better-auth/next-js";
-import { emailOTP } from "better-auth/plugins";
+import { emailOTP, multiSession } from "better-auth/plugins";
 import { SendMail } from "./nodemailer";
 
 export const auth = betterAuth({
@@ -19,6 +19,9 @@ export const auth = betterAuth({
     },
 
     plugins: [
+        multiSession({
+            maximumSessions: 3
+        }),
         emailOTP({
             async sendVerificationOTP({ email, otp, type }) {
                 if (type === "sign-in") {

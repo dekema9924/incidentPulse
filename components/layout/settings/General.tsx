@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useDashboardContext } from '@/context/DashboardContext'
 import { slugify } from '@/utils/slugify'
 import Account from './Account'
-import { authClient } from '@/src/lib/auth-client'
 import { updateOrganization } from '@/src/lib/dashboard-actions'
 import Members from './member/Members'
+import { getMembers } from '@/src/lib/org-access'
 
 
 
@@ -17,19 +17,29 @@ import Members from './member/Members'
 
 type Tab = 'general' | 'members' | 'account'
 
-const memberCount = 4 // TODO: replace with the real member count
-
-const TABS: { id: Tab; label: string }[] = [
-    { id: 'general', label: 'General' },
-    { id: 'members', label: `Members (${memberCount})` },
-    { id: 'account', label: 'Account' },
-]
 
 export default function Settings() {
     const router = useRouter()
     const { org, isAdmin } = useDashboardContext()
+    const [memberCount, setMemberCount] = useState<number>(0)
+
+    const TABS: { id: Tab; label: string }[] = [
+        { id: 'general', label: 'General' },
+        { id: 'members', label: `Members (${memberCount})` },
+        { id: 'account', label: 'Account' },
+    ]
 
     // console.log(org)
+
+
+    const getMemberCount = async () => {
+        const count = await getMembers(org.slug)
+        setMemberCount(count.length)
+    }
+
+    useEffect(() => {
+        getMemberCount()
+    }, [org])
 
     const [tab, setTab] = useState<Tab>('general')
     const [name, setName] = useState(org.name)

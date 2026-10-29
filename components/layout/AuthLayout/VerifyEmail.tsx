@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import { LoaderCircle } from "lucide-react";
 
 const OTP_LENGTH = 6;
 const RESEND_SECONDS = 50;
@@ -18,6 +19,7 @@ export default function VerifyEmail() {
     const searchparams = useSearchParams()
     const email = searchparams.get("email")
     const router = useRouter()
+    const [isSubmit, setIsSubmit] = useState<boolean>(false)
 
 
 
@@ -56,6 +58,8 @@ export default function VerifyEmail() {
     }
 
     async function handleVerify() {
+        setIsSubmit(true)
+
         const code = otp.join("");
 
         if (!email) return;
@@ -66,11 +70,12 @@ export default function VerifyEmail() {
             code
         );
 
+
         if (!verify.success) {
             toast.error(verify.error?.message ?? "Invalid verification code");
+            setIsSubmit(false)
             return;
         }
-
         toast.success("Email verified!");
         router.push("/dashboard");
     }
@@ -125,10 +130,11 @@ export default function VerifyEmail() {
                 </div>
 
                 <button
+                    disabled={isSubmit}
                     onClick={handleVerify}
-                    className="w-full py-3 mb-3.5 rounded-lg bg-[#243352] border border-[#33477A] text-[#E7E9EE] text-sm font-semibold hover:border-[#4A63A0]"
+                    className={`${isSubmit ? "bg-gray-500" : "bg-[#243352]  cursor-pointer "} w-full py-3 mb-3.5 rounded-lg  border border-[#33477A] text-[#E7E9EE] text-sm font-semibold hover:border-[#4A63A0]`}
                 >
-                    Verify Email
+                    {isSubmit ? <LoaderCircle className="mx-auto animate-spin" /> : "Verify Email"}
                 </button>
 
                 <button

@@ -1,5 +1,7 @@
+'use server'
 import type { Invitation } from '@/src/generated/prisma/client'
 import { prisma } from '@/src/lib/prisma'
+import { requireOrgAccess } from './org-access'
 
 export async function claimInvitation(
     userId: string,
@@ -20,3 +22,52 @@ export async function claimInvitation(
         })
     })
 }
+
+
+
+// get pending invites
+export async function getPendingInvites(slug: string) {
+    const { org, role } = await requireOrgAccess(slug)
+    if (role !== 'OWNER' && role !== 'ADMIN') return []
+
+    const rows = await prisma.invitation.findMany({
+        where: { organizationId: org.id, status: 'PENDING', expiresAt: { gt: new Date() } },
+        orderBy: { createdAt: 'desc' },
+        select: {
+            id: true,
+            email: true,
+            role: true,
+            expiresAt: true,
+            invitedBy: { select: { name: true } },
+            // never select `token`: nothing about it should reach the browser
+        },
+    })
+
+    return rows.map(r => ({
+        id: r.id,
+        email: r.email,
+        role: r.role as string,
+        invitedBy: r.invitedBy.name,
+        daysLeft: Math.max(1, Math.ceil((r.expiresAt.getTime() - Date.now()) / 86_400_000)),
+    }))
+}
+
+
+
+//revoke invite
+export async function revokeInvitation(slug: string, invitationId: string) {
+    const { org, role } = await requireOrgAccess(slug)
+    if (role !== 'OWNER' && role !== 'ADMIN') {
+        return { success: false as const, error: "You don't have permission to do that." }
+    }
+
+    // scoped by org.id, so an admin can't revoke another workspace's invitation by guessing an ID
+    const res = await prisma.invitation.updateMany({
+        where: { id: invitationId, organizationId: org.id, status: 'PENDING' },
+        data: { status: 'REVOKED' },
+    })
+    if (res.count === 0) return { success: false as const, error: 'Invitation not found.' }
+
+    return { success: true as const }
+}
+

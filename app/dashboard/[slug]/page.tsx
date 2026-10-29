@@ -1,11 +1,11 @@
 'use client'
 
-import MyIncidents from '@/components/layout/Dashboard/MyIncidents';
+import MyIncidents from '@/components/layout/Dashboard/incident/MyIncidents';
 import { useDashboardContext } from '@/context/DashboardContext'
 import Calendar from '@/components/layout/Dashboard/Calendar';
 import Settings from '@/components/layout/settings/General';
 import DashboardPage from '../../page';
-import IncidentsPage from '@/components/layout/Dashboard/IncidentsPage';
+import IncidentsPage from '@/components/layout/Dashboard/incident/IncidentsPage';
 
 export default function page() {
     const { isActiveId } = useDashboardContext()
