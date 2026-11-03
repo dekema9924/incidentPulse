@@ -6,6 +6,7 @@ import Calendar from '@/components/layout/Dashboard/Calendar';
 import Settings from '@/components/layout/settings/General';
 import DashboardPage from '../../page';
 import IncidentsPage from '@/components/layout/Dashboard/incident/IncidentsPage';
+import Inbox from '@/components/layout/Dashboard/Inbox';
 
 export default function page() {
     const { isActiveId } = useDashboardContext()
@@ -26,6 +27,9 @@ export default function page() {
 
             case 5:
                 return <Settings />;
+
+            case 6:
+                return <Inbox />
 
             default:
                 return <DashboardPage />;

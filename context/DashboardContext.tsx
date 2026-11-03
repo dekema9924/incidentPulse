@@ -12,6 +12,7 @@ type DashboardContextType = {
     role: Role
     isAdmin: boolean   // OWNER or ADMIN: can assign incidents, approve requests, invite
     canPost: boolean   // everyone except VIEWER: can post, acknowledge, resolve
+    inviteCount: number
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(
@@ -23,11 +24,13 @@ export const DashboardContextProvider = ({
     org,
     orgs,
     role,
+    inviteCount,
 }: {
     children: React.ReactNode
     org: Org
     orgs: Org[]
-    role: Role
+    role: Role,
+    inviteCount: number
 }) => {
     const [isActiveId, setIsActiveId] = useState<number>(1);
 
@@ -36,7 +39,7 @@ export const DashboardContextProvider = ({
 
     return (
         <DashboardContext.Provider
-            value={{ isActiveId, setIsActiveId, org, role, isAdmin, canPost, orgs }}
+            value={{ isActiveId, setIsActiveId, org, role, isAdmin, inviteCount, canPost, orgs }}
         >
             {children}
         </DashboardContext.Provider>

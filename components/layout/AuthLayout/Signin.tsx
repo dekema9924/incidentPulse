@@ -6,6 +6,7 @@ import PasswordInput from '@/components/ui/Passwordinput'
 import toast from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
 import { SendVerificationOTP, SignIn } from '@/src/lib/auth-actions'
+import { safeCallbackUrl } from '@/src/lib/safe-redirect'
 
 
 type formDataType = {
@@ -41,7 +42,10 @@ export default function SignInPage() {
             toast.error(res.error);
             return;
         }
-
+        // if they came from an invite link, go back to it; otherwise let the guards decide
+        const cb = safeCallbackUrl(new URLSearchParams(window.location.search).get('callbackUrl'))
+        console.log("cb", cb)
+        router.replace(cb ?? '/dashboard')
         router.push("/dashboard");
         toast.success("Signed In")
 

@@ -41,7 +41,8 @@ enum EventType {
 
 enum InviteStatus   { 
   PENDING 
-  ACCEPTED 
+  ACCEPTED
+  DECLINED 
   EXPIRED 
   REVOKED
  }

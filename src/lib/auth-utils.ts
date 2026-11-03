@@ -8,7 +8,7 @@ import { cache } from "react";
 
 
 // cache() = one session lookup per request, even if several guards call it
-const getSession = cache(async () =>
+export const getSession = cache(async () =>
     auth.api.getSession({ headers: await headers() })
 )
 

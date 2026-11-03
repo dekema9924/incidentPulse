@@ -2,9 +2,8 @@
 import { auth } from '@/src/lib/auth'
 import { headers } from 'next/headers'
 import { prisma } from './prisma'
-import { hashToken } from '@/utils/invite-token'
 import { claimInvitation } from './accept-invite'
-import { findInvitationByToken, getValidInvitation } from '@/utils/Invitation'
+import { getValidInvitation } from '@/utils/Invitation'
 
 
 type LoginType = {

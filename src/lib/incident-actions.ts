@@ -3,6 +3,7 @@
 import { prisma } from '@/src/lib/prisma'
 import { requireOrgAccess } from '@/src/lib/org-access'
 import { ESCALATION_SLA_MS } from '@/utils/constants'
+import { success } from 'better-auth'
 
 
 
@@ -203,5 +204,215 @@ export const getIncident = async (slug: string, incidentId: string) => {
         // only admins see who asked; members just learn whether they already asked
         requests: isAdmin ? row.requests.map(r => ({ id: r.user.id, name: r.user.name })) : [],
         requestedByMe: row.requests.some(r => r.user.id === session.user.id),
+    }
+}
+
+
+
+
+//resolve incident
+
+type Result = { success: true } | { success: false; error: string }
+
+export const updateIncidentStatus = async (input: {
+    slug: string
+    incidentId: string
+    action: 'acknowledge' | 'resolve'
+}): Promise<Result> => {
+    const { session, org, role } = await requireOrgAccess(input.slug)
+
+    if (role === 'VIEWER') {
+        return { success: false, error: 'Viewers have read-only access.' }
+    }
+    if (input.action !== 'acknowledge' && input.action !== 'resolve') {
+        return { success: false, error: 'Invalid action.' }
+    }
+
+    const isResolve = input.action === 'resolve'
+    const isAdmin = role === 'OWNER' || role === 'ADMIN'
+    const now = new Date()
+
+    try {
+        const changed = await prisma.$transaction(async tx => {
+            const claimed = await tx.incident.updateMany({
+                where: {
+                    id: input.incidentId,
+                    organizationId: org.id,
+                    status: { not: 'RESOLVED' },
+                    // resolving: admins always; everyone else only if it's assigned to them
+                    ...(isResolve && !isAdmin ? { assigneeId: session.user.id } : {}),
+                    ...(isResolve ? {} : { acknowledgedAt: null }),
+                },
+                data: isResolve ? { status: 'RESOLVED', resolvedAt: now } : { acknowledgedAt: now },
+            })
+            if (claimed.count === 0) return false
+
+            if (isResolve) {
+                await tx.incident.updateMany({
+                    where: { id: input.incidentId, acknowledgedAt: null },
+                    data: { acknowledgedAt: now },
+                })
+            }
+
+            await tx.timelineEvent.create({
+                data: {
+                    incidentId: input.incidentId,
+                    authorId: session.user.id,
+                    type: isResolve ? 'RESOLVE' : 'MESSAGE',
+                    text: isResolve ? 'Marked resolved.' : 'Acknowledged.',
+                },
+            })
+            return true
+        })
+
+        if (!changed) {
+            // nothing matched: read once to give the right reason
+            const incident = await prisma.incident.findFirst({
+                where: { id: input.incidentId, organizationId: org.id },
+                select: { status: true, assigneeId: true },
+            })
+            if (!incident) return { success: false, error: 'Incident not found.' }
+            if (incident.status === 'RESOLVED') {
+                return { success: false, error: 'This incident is already resolved.' }
+            }
+            if (isResolve && !isAdmin && incident.assigneeId !== session.user.id) {
+                return { success: false, error: 'Only the assignee or an admin can resolve this incident.' }
+            }
+            return { success: false, error: 'This incident was already acknowledged.' }
+        }
+
+        return { success: true }
+    } catch (e) {
+        console.error('updateIncidentStatus failed', e)
+        return { success: false, error: 'Something went wrong. Please try again.' }
+    }
+}
+
+
+
+
+
+
+type ActionResult = { success: true } | { success: false; error: string }
+
+// people who can be assigned (Viewers can't work incidents)
+export const getOrgMembers = async (slug: string) => {
+    const { org } = await requireOrgAccess(slug)
+
+    const rows = await prisma.membership.findMany({
+        where: { organizationId: org.id, role: { not: 'VIEWER' } },
+        orderBy: { joinedAt: 'asc' },
+        select: { user: { select: { id: true, name: true } } },
+    })
+    return rows.map(r => ({ id: r.user.id, name: r.user.name }))
+}
+//assign incidents
+// userId = null means "unassign"
+export const assignIncident = async (input: {
+    slug: string
+    incidentId: string
+    userId: string | null
+}): Promise<ActionResult> => {
+    const { session, org, role } = await requireOrgAccess(input.slug)
+
+    if (role !== 'OWNER' && role !== 'ADMIN') {
+        return { success: false, error: 'Only owners and admins can assign incidents.' }
+    }
+
+    try {
+        let assigneeName: string | null = null
+
+        if (input.userId) {
+            // the person must belong to THIS org and be allowed to work incidents
+            const member = await prisma.membership.findFirst({
+                where: { organizationId: org.id, userId: input.userId, role: { not: 'VIEWER' } },
+                select: { user: { select: { name: true } } },
+            })
+            if (!member) return { success: false, error: 'That person cannot be assigned to incidents.' }
+            assigneeName = member.user.name
+        }
+
+        const changed = await prisma.$transaction(async tx => {
+            const res = await tx.incident.updateMany({
+                where: { id: input.incidentId, organizationId: org.id, status: { not: 'RESOLVED' } },
+                data: { assigneeId: input.userId },
+            })
+            if (res.count === 0) return false
+
+            // this decision settles the requests: the chosen person is approved, the rest declined
+            if (input.userId) {
+                await tx.incidentRequest.updateMany({
+                    where: { incidentId: input.incidentId, userId: input.userId, status: 'PENDING' },
+                    data: { status: 'APPROVED' },
+                })
+            }
+            await tx.incidentRequest.updateMany({
+                where: { incidentId: input.incidentId, status: 'PENDING' },
+                data: { status: 'DECLINED' },
+            })
+
+            await tx.timelineEvent.create({
+                data: {
+                    incidentId: input.incidentId,
+                    authorId: session.user.id,
+                    type: 'SYSTEM',
+                    text: assigneeName ? `Assigned to ${assigneeName}.` : 'Unassigned.',
+                },
+            })
+            return true
+        })
+
+        if (!changed) return { success: false, error: 'Incident not found, or it is already resolved.' }
+        return { success: true }
+    } catch (e) {
+        console.error('assignIncident failed', e)
+        return { success: false, error: 'Something went wrong. Please try again.' }
+    }
+}
+
+
+//request incident
+export const requestIncident = async (input: {
+    slug: string
+    incidentId: string
+}): Promise<ActionResult> => {
+    const { session, org, role } = await requireOrgAccess(input.slug)
+
+    if (role === 'VIEWER') return { success: false, error: 'Viewers have read-only access.' }
+
+    try {
+        const incident = await prisma.incident.findFirst({
+            where: { id: input.incidentId, organizationId: org.id },
+            select: { status: true, assigneeId: true },
+        })
+        if (!incident) return { success: false, error: 'Incident not found.' }
+        if (incident.status === 'RESOLVED') return { success: false, error: 'This incident is already resolved.' }
+        if (incident.assigneeId === session.user.id) {
+            return { success: false, error: "You're already assigned to this incident." }
+        }
+
+        const key = { incidentId_userId: { incidentId: input.incidentId, userId: session.user.id } }
+        const existing = await prisma.incidentRequest.findUnique({ where: key })
+        if (existing?.status === 'PENDING') return { success: true } // already asked: don't duplicate the timeline line
+
+        await prisma.$transaction([
+            prisma.incidentRequest.upsert({
+                where: key,
+                update: { status: 'PENDING' },
+                create: { incidentId: input.incidentId, userId: session.user.id },
+            }),
+            prisma.timelineEvent.create({
+                data: {
+                    incidentId: input.incidentId,
+                    authorId: session.user.id,
+                    type: 'MESSAGE',
+                    text: 'Requested to work on this incident.',
+                },
+            }),
+        ])
+        return { success: true }
+    } catch (e) {
+        console.error('requestIncident failed', e)
+        return { success: false, error: 'Something went wrong. Please try again.' }
     }
 }

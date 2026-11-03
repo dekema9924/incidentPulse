@@ -1,7 +1,7 @@
 'use client'
 
 import { useDashboardContext } from '@/context/DashboardContext';
-import { PanelRight, PlusCircleIcon } from 'lucide-react';
+import { InboxIcon, PanelRight } from 'lucide-react';
 import { LayoutGrid } from 'lucide-react';
 import { MessageSquareWarning } from 'lucide-react';
 import { Cog } from 'lucide-react';
@@ -12,7 +12,7 @@ import OrgSwitcher from '../Organization/OrgSwitcher';
 
 export default function DashboardSideBar() {
 
-    const { isActiveId, setIsActiveId, org, isAdmin } = useDashboardContext()
+    const { isActiveId, setIsActiveId, org, isAdmin, inviteCount } = useDashboardContext()
     const [sideBarOpen, setSideBarOpen] = useState<boolean>(true)
     const isOwner = isAdmin ? "Admin" : "member"
     const [newOrgModalOpen, setNewOrgModal] = useState<boolean>(false)
@@ -107,6 +107,11 @@ export default function DashboardSideBar() {
                                 label: "Settings",
                                 icon: Cog,
                             },
+                            {
+                                id: 6,
+                                label: "Inbox",
+                                icon: InboxIcon
+                            }
 
                         ].map((item) => {
                             const Icon = item.icon;
@@ -116,16 +121,31 @@ export default function DashboardSideBar() {
 
                                 <li
                                     onClick={() => {
-                                        handleActiveTab(item.id), handleSideBarCollapse()
+                                        handleActiveTab(item.id)
+                                        handleSideBarCollapse()
                                     }}
                                     key={item.id}
                                     className={`flex items-center gap-3 rounded-md px-2 py-2 cursor-pointer transition-colors
-                                        ${sideBarOpen ? "" : "justify-center"}
-                                        ${isActive ? "bg-[#1b1f28] text-white!" : "hover:bg-[#1b1f28] hover:text-white!"}`}
+        ${sideBarOpen ? "" : "justify-center"}
+        ${isActive ? "bg-[#1b1f28] text-white!" : "hover:bg-[#1b1f28] hover:text-white!"}`}
                                     title={!sideBarOpen ? item.label : undefined}
                                 >
-                                    <Icon className={`w-5 shrink-0 ${isActive ? "text-white!" : ""}`} />
+                                    {/* icon, with a red dot on Inbox when the sidebar is collapsed */}
+                                    <span className="relative shrink-0">
+                                        <Icon className={`w-5 ${isActive ? "text-white!" : ""}`} />
+                                        {item.id === 6 && inviteCount > 0 && !sideBarOpen && (
+                                            <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-[#E5484D]" />
+                                        )}
+                                    </span>
+
                                     {sideBarOpen && <span>{item.label}</span>}
+
+                                    {/* count pill on Inbox when the sidebar is open */}
+                                    {sideBarOpen && item.id === 6 && inviteCount > 0 && (
+                                        <span className="ml-auto rounded-full bg-[#E5484D] px-1.5 text-[10px] font-semibold text-white">
+                                            {inviteCount}
+                                        </span>
+                                    )}
                                 </li>
 
                             )
