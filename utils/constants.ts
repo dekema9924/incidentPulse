@@ -1,4 +1,5 @@
-export const ESCALATION_SLA_MS = 15 * 60 * 1000
+// 15min the escaltes to tier2
+export const ESCALATION_SLA_MS = 10 * 1000
 
 
 

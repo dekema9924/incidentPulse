@@ -2,7 +2,7 @@
 
 import { createOrganization } from '@/src/lib/dashboard-actions'
 import React, { useState } from 'react'
-import { slugify } from '@/utils/slugify'
+import { slugify } from '@/utils/string-concatenation'
 import { useRouter } from 'next/navigation'
 
 

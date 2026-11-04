@@ -1,4 +1,5 @@
 import { transporter } from "@/src/lib/nodemailer"
+import { escapeHtml, singleLine } from "./string-concatenation"
 
 
 type InviteMailInput = {
@@ -16,17 +17,8 @@ const ROLE_INFO = {
     VIEWER: { label: 'Viewer', description: 'view incidents and follow along, but not make changes' },
 } as const
 
-// org and inviter names are typed by users, so they must be escaped before going into HTML
-const escapeHtml = (value: string) =>
-    value
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;')
 
-// for the subject line and plain-text body: no line breaks allowed
-const singleLine = (value: string) => value.replace(/[\r\n]+/g, ' ').trim()
+
 
 export const SendInviteMail = async ({
     email,

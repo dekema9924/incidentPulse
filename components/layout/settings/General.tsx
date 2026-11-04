@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useDashboardContext } from '@/context/DashboardContext'
-import { slugify } from '@/utils/slugify'
+import { slugify } from '@/utils/string-concatenation'
 import Account from './Account'
 import { updateOrganization } from '@/src/lib/dashboard-actions'
 import Members from './member/Members'

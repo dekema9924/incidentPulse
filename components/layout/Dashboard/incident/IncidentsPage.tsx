@@ -1,9 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { PlusIcon, TriangleAlert } from 'lucide-react'
+import { CircleCheck, PlusIcon, TriangleAlert } from 'lucide-react'
 import toast from 'react-hot-toast'
-import Button from '@/components/ui/Button'
 import NewIncidentForm from './NewIncidentForm'
 import { useDashboardContext } from '@/context/DashboardContext'
 import {
@@ -16,19 +15,31 @@ import {
     type IncidentListItem,
 } from '@/src/lib/incident-actions'
 import { formatTime } from '@/utils/constants'
+import { EscalationCountdown } from './EscalationCountdown'
 
 type EventType = 'msg' | 'system' | 'escalation' | 'resolve'
+type Severity = IncidentListItem['severity']
+type Status = IncidentListItem['status']
 type Member = { id: string; name: string }
 type ActionResult = { success: true } | { success: false; error: string }
 type IncidentDetail = NonNullable<Awaited<ReturnType<typeof getIncident>>>
 
-const SEV_BAR: Record<IncidentListItem['severity'], string> = {
+// Height of the three-column workspace on desktop. Adjust 8rem to match your header height plus the page padding.
+const PAGE_HEIGHT = 'lg:h-[calc(100dvh-8rem)]'
+
+const SEV_BAR: Record<Severity, string> = {
     P1: 'bg-[#E5484D]',
     P2: 'bg-[#F5A524]',
     P3: 'bg-[#5B8DEF]',
 }
 
-const STATUS_PILL: Record<IncidentListItem['status'], string> = {
+const SEV_BADGE: Record<Severity, string> = {
+    P1: 'border-[#E5484D]/30 bg-[#E5484D]/15 text-[#E5484D]',
+    P2: 'border-[#F5A524]/30 bg-[#F5A524]/15 text-[#F5A524]',
+    P3: 'border-[#5B8DEF]/30 bg-[#5B8DEF]/15 text-[#5B8DEF]',
+}
+
+const STATUS_PILL: Record<Status, string> = {
     Investigating: 'text-[#E5484D] border-[#4a2124]',
     Identified: 'text-[#F5A524] border-[#4a3a1a]',
     Monitoring: 'text-[#5B8DEF] border-[#233a5c]',
@@ -42,19 +53,109 @@ const EVENT_TEXT: Record<EventType, string> = {
     resolve: 'text-[#3DD68C]',
 }
 
-const selectClass =
-    'w-full rounded-md border border-[#262B36] bg-[#1B1F28] px-2.5 py-2 text-[13px] text-[#E7E9EE] outline-none focus:border-[#5B8DEF] disabled:cursor-not-allowed disabled:opacity-50 [color-scheme:dark]'
+const EVENT_BOX: Record<EventType, string> = {
+    msg: '',
+    system: '',
+    escalation: 'rounded-md border border-[#4a2124] bg-[#E5484D]/10 px-3 py-2',
+    resolve: 'rounded-md border border-[#1d4b3a] bg-[#3DD68C]/10 px-3 py-2',
+}
 
-const smallBtn =
-    'rounded-md border border-[#262B36] bg-[#1B1F28] px-3 py-1.5 text-xs hover:border-[#3a4152] disabled:cursor-not-allowed disabled:opacity-50'
+const focusRing = 'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#5B8DEF]'
+
+const selectClass = `w-full rounded-md border border-[#262B36] bg-[#1B1F28] px-2.5 py-2 text-[13px] text-[#E7E9EE] outline-none focus:border-[#5B8DEF] disabled:cursor-not-allowed disabled:opacity-50 [color-scheme:dark]`
+
+const smallBtn = `rounded-md border border-[#262B36] bg-[#1B1F28] px-3 py-1.5 text-xs transition-colors hover:border-[#3a4152] disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`
+
+const btnSecondary = `rounded-md border border-[#33477A] bg-[#243352] px-3.5 py-1.5 text-xs font-medium text-white transition-colors hover:border-[#4A63A0] disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`
+
+const btnDanger = `rounded-md border border-[#e5484d]/30 bg-[#e5484d]/20 px-3.5 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#e5484d]/30 disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`
+
+const btnNeutral = `rounded-md border border-[#262B36] bg-[#1B1F28] px-3.5 py-1.5 text-xs font-medium text-white transition-colors hover:border-[#3a4152] ${focusRing}`
 
 const clock = (ts: number) =>
     new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+
+const initials = (name: string) =>
+    name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase()
+
+/* ---------- small presentational pieces ---------- */
+
+function StatusPill({ status }: { status: Status }) {
+    return (
+        <span className={`inline-flex items-center rounded-full border px-2 py-px text-[10px] font-medium ${STATUS_PILL[status]}`}>
+            {status}
+        </span>
+    )
+}
+
+function SeverityBadge({ severity }: { severity: Severity }) {
+    return (
+        <span className={`inline-flex items-center rounded-md border px-1.5 py-px font-mono text-[10px] font-semibold ${SEV_BADGE[severity]}`}>
+            {severity}
+        </span>
+    )
+}
+
+function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' }) {
+    return (
+        <span
+            className={`flex shrink-0 items-center justify-center rounded-full bg-[#243352] font-semibold text-[#A9C0FF] ${size === 'sm' ? 'h-5 w-5 text-[9px]' : 'h-6 w-6 text-[10px]'
+                }`}
+        >
+            {initials(name)}
+        </span>
+    )
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+    return <p className="mb-2 text-[11px] font-semibold tracking-wider text-[#565C6B]">{children}</p>
+}
+
+function Skeleton({ className = '' }: { className?: string }) {
+    return <div className={`animate-pulse rounded bg-[#1B1F28] ${className}`} />
+}
+
+function TimelineMarker({ type, author }: { type: EventType; author: string }) {
+    if (type === 'escalation') {
+        return (
+            <span className="z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[#4a2124] bg-[#2a1517] text-[#E5484D]">
+                <TriangleAlert className="h-3 w-3" />
+            </span>
+        )
+    }
+    if (type === 'resolve') {
+        return (
+            <span className="z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[#1d4b3a] bg-[#122a20] text-[#3DD68C]">
+                <CircleCheck className="h-3 w-3" />
+            </span>
+        )
+    }
+    if (type === 'system') {
+        return (
+            <span className="z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[#4a3a1a] bg-[#2a2212]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#F5A524]" />
+            </span>
+        )
+    }
+    return <Avatar name={author} />
+}
+
+function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
+    return (
+        <div className="flex items-center justify-between gap-3 py-2.5 text-xs">
+            <dt className="text-[#868C9C]">{label}</dt>
+            <dd className="text-right font-medium">{children}</dd>
+        </div>
+    )
+}
+
+/* ---------- page ---------- */
 
 export default function IncidentsPage() {
     const { org, isAdmin, canPost } = useDashboardContext()
 
     const [incidents, setIncidents] = useState<IncidentListItem[]>([])
+    const [loaded, setLoaded] = useState(false)
     const [selectedId, setSelectedId] = useState<string | null>(null)
     const [openIncidentModal, setOpenIncidentModal] = useState(false)
     const [version, setVersion] = useState(0) // bump to refetch the queue and the open incident
@@ -62,6 +163,7 @@ export default function IncidentsPage() {
     const [members, setMembers] = useState<Member[]>([])
     const [loadedDetail, setLoadedDetail] = useState<(IncidentDetail & { incidentId: string }) | null>(null)
     const timelineEndRef = useRef<HTMLDivElement>(null)
+    const detailRef = useRef<HTMLElement>(null)
 
     const selectedIncident = incidents.find(i => i.id === selectedId)
 
@@ -78,10 +180,15 @@ export default function IncidentsPage() {
             .then(data => {
                 if (cancelled) return
                 setIncidents(data)
+                setLoaded(true)
                 // keep the current selection if it still exists, otherwise open the first incident
                 setSelectedId(prev => (prev && data.some(i => i.id === prev) ? prev : data[0]?.id ?? null))
             })
-            .catch(() => { if (!cancelled) setIncidents([]) })
+            .catch(() => {
+                if (cancelled) return
+                setIncidents([])
+                setLoaded(true)
+            })
 
         return () => { cancelled = true }
     }, [org.slug, version])
@@ -114,6 +221,16 @@ export default function IncidentsPage() {
     useEffect(() => {
         timelineEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     }, [detail?.timeline.length])
+
+    // on small screens the detail sits below the queue, so bring it into view after a pick
+    const selectIncident = (id: string) => {
+        setSelectedId(id)
+        if (window.matchMedia('(max-width: 1023px)').matches) {
+            requestAnimationFrame(() =>
+                detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            )
+        }
+    }
 
     // one place for busy state, errors, toasts and refetching
     const run = async (fn: () => Promise<ActionResult>, okMessage: string) => {
@@ -159,18 +276,29 @@ export default function IncidentsPage() {
     }
 
     return (
-        <main className="flex min-h-screen flex-col text-[#E7E9EE] lg:flex-row">
+        <div
+            className={`flex min-h-[32rem] flex-col overflow-hidden rounded-xl border border-[#262B36] bg-[#15181F] text-[#E7E9EE] lg:flex-row ${PAGE_HEIGHT}`}
+        >
             {/* ===== incident queue ===== */}
-            <section className="max-h-56 shrink-0 overflow-y-auto border-b border-[#262B36] lg:max-h-none lg:w-64 lg:border-b-0 lg:border-r">
-                <div className="my-2 flex items-center gap-4 px-4">
-                    <span className="secondary-text text-xs">INCIDENT QUEUE</span>
+            <aside className="flex max-h-72 w-full shrink-0 flex-col border-b border-[#262B36] lg:max-h-none lg:w-72 lg:border-b-0 lg:border-r">
+                <div className="flex items-center justify-between gap-2 border-b border-[#262B36] px-4 py-3">
+                    <div className="flex items-center gap-2">
+                        <h2 className="text-[11px] font-semibold tracking-wider text-[#868C9C]">INCIDENT QUEUE</h2>
+                        <span className="rounded-full bg-[#1B1F28] px-1.5 text-[10px] text-[#868C9C]">
+                            {incidents.length}
+                        </span>
+                    </div>
+
                     {canPost && (
                         <button
                             type="button"
                             onClick={() => setOpenIncidentModal(v => !v)}
-                            className="panel flex h-6! w-fit! cursor-pointer items-center gap-1 rounded-md px-3 text-xs"
+                            className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${focusRing} ${openIncidentModal
+                                    ? 'border-[#262B36] bg-[#1B1F28] hover:border-[#3a4152]'
+                                    : 'border-[#33477A] bg-[#243352] hover:border-[#4A63A0]'
+                                }`}
                         >
-                            {!openIncidentModal && <PlusIcon className="w-4" />}
+                            {!openIncidentModal && <PlusIcon className="h-3.5 w-3.5" />}
                             {openIncidentModal ? 'Cancel' : 'New'}
                         </button>
                     )}
@@ -186,171 +314,269 @@ export default function IncidentsPage() {
                     />
                 )}
 
-                {incidents.map(inc => (
-                    <button
-                        key={inc.id}
-                        onClick={() => setSelectedId(inc.id)}
-                        className={`flex w-full gap-3 border-b border-[#262B36] px-4 py-3 text-left hover:bg-[#15181F] ${inc.id === selectedId ? 'bg-[#1B1F28]' : ''
-                            }`}
-                    >
-                        <span className={`w-0.75 shrink-0 rounded-sm ${SEV_BAR[inc.severity]}`} />
-                        <span className="min-w-0">
-                            <span className="mb-1.5 block text-[13px] leading-snug">{inc.title}</span>
-                            <span className="flex flex-wrap items-center gap-2 font-mono text-[11px] text-[#868C9C]">
-                                <span>{inc.code}</span>
-                                <span className={`rounded-[3px] border px-1.5 py-px text-[10px] ${STATUS_PILL[inc.status]}`}>
-                                    {inc.status}
-                                </span>
-                                <span>{inc.assignee ?? 'Unassigned'}</span>
-                            </span>
-                        </span>
-                    </button>
-                ))}
-            </section>
-
-            {/* ===== header + chat ===== */}
-            {!selectedIncident ? (
-                <section className="flex min-h-64 flex-1 items-center justify-center px-6 text-center text-xs text-[#565C6B]">
-                    Select an incident, or open a new one.
-                </section>
-            ) : (
-                <>
-                    <section className="flex min-h-80 min-w-0 flex-1 flex-col">
-                        <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between lg:p-6">
-                            <div className="flex min-w-0 flex-col gap-2">
-                                <h1 className="font-semibold">{selectedIncident.title}</h1>
-                                <div className="secondary-text flex flex-wrap items-center gap-2 text-xs">
-                                    <span className="font-mono">{selectedIncident.code}</span>
-                                    <span className={`rounded-[3px] border px-1.5 py-px text-[10px] ${STATUS_PILL[selectedIncident.status]}`}>
-                                        {selectedIncident.status}
-                                    </span>
-                                    <span>severity {selectedIncident.severity}</span>
+                <ul className="flex-1 overflow-y-auto">
+                    {!loaded &&
+                        [0, 1, 2, 3].map(i => (
+                            <li key={i} className="flex gap-3 border-b border-[#262B36] px-4 py-3">
+                                <Skeleton className="mt-1.5 h-2 w-2 rounded-full" />
+                                <div className="flex-1 space-y-2">
+                                    <Skeleton className="h-3.5 w-11/12" />
+                                    <Skeleton className="h-3 w-2/3" />
                                 </div>
-                                <span className="secondary-text text-xs">Opened {formatTime(selectedIncident.opened)}</span>
+                            </li>
+                        ))}
+
+                    {loaded && incidents.length === 0 && (
+                        <li className="px-4 py-10 text-center">
+                            <p className="text-[13px] font-medium">No incidents yet</p>
+                            <p className="mt-1 text-xs text-[#868C9C]">
+                                {canPost ? 'Open one when something breaks.' : 'Nothing has been reported.'}
+                            </p>
+                        </li>
+                    )}
+
+                    {incidents.map(inc => {
+                        const active = inc.id === selectedId
+
+                        return (
+                            <li key={inc.id}>
+                                <button
+                                    type="button"
+                                    onClick={() => selectIncident(inc.id)}
+                                    aria-current={active ? 'true' : undefined}
+                                    className={`relative flex w-full gap-3 border-b border-[#262B36] px-4 py-3 text-left transition-colors hover:bg-[#1B1F28]/70 ${focusRing} ${active ? 'bg-[#1B1F28]' : ''
+                                        }`}
+                                >
+                                    {active && <span className={`absolute inset-y-0 left-0 w-0.5 ${SEV_BAR[inc.severity]}`} />}
+                                    <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${SEV_BAR[inc.severity]}`} />
+
+                                    <span className="min-w-0 flex-1">
+                                        <span className="line-clamp-2 text-[13px] font-medium leading-snug">{inc.title}</span>
+                                        <span className="mt-1.5 flex items-center gap-2 text-[11px] text-[#868C9C]">
+                                            <span className="font-mono">{inc.code}</span>
+                                            <StatusPill status={inc.status} />
+                                            <span className="ml-auto truncate">{inc.assignee ?? 'Unassigned'}</span>
+                                        </span>
+                                    </span>
+                                </button>
+                            </li>
+                        )
+                    })}
+                </ul>
+            </aside>
+
+            {/* ===== header + timeline ===== */}
+            <section ref={detailRef} className="flex min-w-0 flex-1 scroll-mt-3 flex-col">
+                {!selectedIncident ? (
+                    !loaded ? (
+                        <div className="space-y-3 p-6">
+                            <Skeleton className="h-3 w-24" />
+                            <Skeleton className="h-5 w-2/3" />
+                            <Skeleton className="h-3 w-40" />
+                        </div>
+                    ) : (
+                        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 py-16 text-center">
+                            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1B1F28] text-[#3DD68C]">
+                                <CircleCheck className="h-5 w-5" />
+                            </span>
+                            <p className="text-sm font-medium">
+                                {incidents.length === 0 ? 'All clear' : 'Select an incident'}
+                            </p>
+                            <p className="max-w-xs text-xs text-[#868C9C]">
+                                {incidents.length === 0
+                                    ? 'There are no incidents in this workspace right now.'
+                                    : 'Pick one from the queue to see its timeline.'}
+                            </p>
+                        </div>
+                    )
+                ) : (
+                    <>
+                        <header className="flex flex-col gap-4 border-b border-[#262B36] p-4 sm:flex-row sm:items-start sm:justify-between lg:p-5">
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className="font-mono text-xs text-[#868C9C]">{selectedIncident.code}</span>
+                                    <SeverityBadge severity={selectedIncident.severity} />
+                                    <StatusPill status={selectedIncident.status} />
+                                </div>
+                                <h1 className="mt-2 text-base font-semibold leading-snug lg:text-lg">
+                                    {selectedIncident.title}
+                                </h1>
+                                <p className="mt-1 text-xs text-[#868C9C]">Opened {formatTime(selectedIncident.opened)}</p>
                             </div>
 
-                            <div className="flex shrink-0 gap-2">
+                            <div className="flex shrink-0 flex-wrap gap-2">
                                 {selectedIncident.status !== 'Resolved' ? (
                                     canPost && (
                                         <>
                                             {!selectedIncident.acked && (
-                                                <Button
+                                                <button
+                                                    type="button"
                                                     onClick={() => handleStatus('acknowledge')}
-                                                    text="Acknowledge"
-                                                    className="h-7 w-fit border border-[#33477a] bg-[#243352]! px-4 text-xs text-white"
-                                                />
+                                                    disabled={busy}
+                                                    className={btnSecondary}
+                                                >
+                                                    Acknowledge
+                                                </button>
                                             )}
-                                            <Button
+                                            <button
+                                                type="button"
                                                 onClick={() => handleStatus('resolve')}
-                                                text="Resolve"
-                                                className="h-7 w-fit border border-[#e5484d]/10 bg-[#e5484d]/20! px-4 text-xs text-white"
-                                            />
+                                                disabled={busy}
+                                                className={btnDanger}
+                                            >
+                                                Resolve
+                                            </button>
                                         </>
                                     )
                                 ) : (
-                                    <Button
+                                    <button
+                                        type="button"
                                         onClick={() => console.log('generate postmortem')}
-                                        text="Generate Postmortem"
-                                        className="h-7 w-fit border border-[#e5484d]/10 px-4 text-xs text-white"
-                                    />
+                                        className={btnNeutral}
+                                    >
+                                        Generate postmortem
+                                    </button>
                                 )}
                             </div>
-                        </div>
+                        </header>
 
-                        <hr className="panel border-t-0!" />
-
-                        {/* chat */}
-                        <div className="max-h-[65vh] flex-1 overflow-y-auto px-5 py-4">
-                            {(detail?.timeline ?? []).map(ev => (
-                                <div key={ev.id} className="mb-5 flex gap-3">
-                                    <span className="w-16 shrink-0 pt-0.5 font-mono text-[11px] text-[#565C6B]">
-                                        {clock(ev.time)}
-                                    </span>
-                                    <div className="min-w-0 text-[13px] leading-relaxed">
-                                        <p className="mb-0.5 text-[11px] text-[#868C9C]">{ev.author}</p>
-                                        <p className={`flex items-start gap-1.5 break-words ${EVENT_TEXT[ev.type]}`}>
-                                            {ev.type === 'escalation' && <TriangleAlert className="mt-1 h-3 w-3 shrink-0" />}
-                                            <span>{ev.text}</span>
-                                        </p>
-                                    </div>
-                                </div>
-                            ))}
-                            <div ref={timelineEndRef} />
-                        </div>
-                    </section>
-
-                    {/* ===== assign incident ===== */}
-                    <section className="w-full shrink-0 overflow-y-auto border-t border-[#262B36] p-4 text-xs lg:w-64 lg:border-l lg:border-t-0">
-                        <div className="mb-5">
-                            <span className="secondary-text mb-1.5 block text-[11px]">Assigned to</span>
-
-                            {isAdmin ? (
-                                <select
-                                    value={selectedIncident.assigneeId ?? ''}
-                                    onChange={e => handleAssign(e.target.value)}
-                                    disabled={busy || selectedIncident.status === 'Resolved'}
-                                    className={selectClass}
-                                >
-                                    <option value="">Unassigned</option>
-                                    {members.map(m => (
-                                        <option key={m.id} value={m.id}>
-                                            {m.name}
-                                        </option>
+                        {/* timeline */}
+                        <div className="max-h-[60vh] flex-1 overflow-y-auto px-4 py-5 lg:max-h-none lg:px-6">
+                            {!detail ? (
+                                <div className="space-y-5">
+                                    {[0, 1, 2].map(i => (
+                                        <div key={i} className="flex gap-3">
+                                            <Skeleton className="h-6 w-6 rounded-full" />
+                                            <div className="flex-1 space-y-2">
+                                                <Skeleton className="h-3 w-32" />
+                                                <Skeleton className="h-4 w-3/4" />
+                                            </div>
+                                        </div>
                                     ))}
-                                </select>
-                            ) : selectedIncident.assignee ? (
-                                <p className="text-[13px]">{selectedIncident.assignee}</p>
-                            ) : (
-                                <div className="flex flex-col items-start gap-2">
-                                    <p className="text-[13px]">Unassigned</p>
-
-                                    {selectedIncident.status !== 'Resolved' && canPost &&
-                                        (requestedByMe ? (
-                                            <p className="text-[11px] text-[#565C6B]">Request sent, waiting on an admin.</p>
-                                        ) : (
-                                            <button onClick={handleRequest} disabled={busy} className={smallBtn}>
-                                                Request to work on this
-                                            </button>
-                                        ))}
                                 </div>
-                            )}
+                            ) : detail.timeline.length === 0 ? (
+                                <p className="py-8 text-center text-xs text-[#868C9C]">No activity yet.</p>
+                            ) : (
+                                <ol>
+                                    {detail.timeline.map((ev, i) => (
+                                        <li key={ev.id} className="relative flex gap-3 pb-5 last:pb-0">
+                                            {i < detail.timeline.length - 1 && (
+                                                <span className="absolute bottom-0 left-3 top-7 w-px bg-[#262B36]" />
+                                            )}
+                                            <TimelineMarker type={ev.type} author={ev.author} />
 
-                            {/* admins: who has asked to take it */}
-                            {isAdmin && requests.length > 0 && (
-                                <ul className="mt-3 flex flex-col gap-2">
-                                    {requests.map(r => (
-                                        <li key={r.id} className="flex items-center justify-between gap-2">
-                                            <span className="min-w-0 truncate">{r.name} requested this</span>
-                                            <button
-                                                onClick={() => handleAssign(r.id)}
-                                                disabled={busy}
-                                                className={`${smallBtn} shrink-0 px-2 py-1`}
-                                            >
-                                                Approve
-                                            </button>
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex flex-wrap items-baseline gap-x-2">
+                                                    <span className="text-xs font-medium">{ev.author}</span>
+                                                    <span className="font-mono text-[11px] text-[#565C6B]">{clock(ev.time)}</span>
+                                                </div>
+                                                <div className={`mt-1 ${EVENT_BOX[ev.type]}`}>
+                                                    <p className={`wrap-break-word text-[13px] leading-relaxed ${EVENT_TEXT[ev.type]}`}>
+                                                        {ev.text}
+                                                    </p>
+                                                </div>
+                                            </div>
                                         </li>
                                     ))}
-                                </ul>
+                                </ol>
                             )}
+                            <div ref={timelineEndRef} />
                         </div>
+                    </>
+                )}
+            </section>
 
-                        <dl className="grid grid-cols-1 gap-3 text-[#868C9C] sm:grid-cols-3 lg:grid-cols-1">
-                            <div>
-                                <dt className="font-medium text-[#E7E9EE]">Opened</dt>
-                                <dd>{formatTime(selectedIncident.opened)}</dd>
+            {/* ===== side panel ===== */}
+            {selectedIncident && (
+                <aside className="w-full shrink-0 overflow-y-auto border-t border-[#262B36] lg:w-72 lg:border-l lg:border-t-0">
+                    {selectedIncident.escalatesAt && selectedIncident.status !== 'Resolved' && (
+                        <div className="border-b border-[#262B36] p-4 pb-0">
+                            <EscalationCountdown escalatesAt={selectedIncident.escalatesAt} />
+                        </div>
+                    )}
+
+                    {/* assignee */}
+                    <div className="border-b border-[#262B36] p-4">
+                        <SectionLabel>ASSIGNED TO</SectionLabel>
+
+                        {isAdmin ? (
+                            <select
+                                value={selectedIncident.assigneeId ?? ''}
+                                onChange={e => handleAssign(e.target.value)}
+                                disabled={busy || selectedIncident.status === 'Resolved'}
+                                className={selectClass}
+                            >
+                                <option value="">Unassigned</option>
+                                {members.map(m => (
+                                    <option key={m.id} value={m.id}>
+                                        {m.name}
+                                    </option>
+                                ))}
+                            </select>
+                        ) : selectedIncident.assignee ? (
+                            <div className="flex items-center gap-2">
+                                <Avatar name={selectedIncident.assignee} />
+                                <span className="text-[13px]">{selectedIncident.assignee}</span>
                             </div>
-                            <div>
-                                <dt className="font-medium text-[#E7E9EE]">Acknowledged</dt>
-                                <dd>{selectedIncident.acked ? 'Yes' : 'No, pending'}</dd>
+                        ) : (
+                            <div className="flex flex-col items-start gap-2.5">
+                                <p className="text-[13px] text-[#868C9C]">Nobody yet</p>
+
+                                {selectedIncident.status !== 'Resolved' && canPost &&
+                                    (requestedByMe ? (
+                                        <p className="text-[11px] text-[#565C6B]">Request sent, waiting on an admin.</p>
+                                    ) : (
+                                        <button type="button" onClick={handleRequest} disabled={busy} className={smallBtn}>
+                                            Request to work on this
+                                        </button>
+                                    ))}
                             </div>
-                            <div>
-                                <dt className="font-medium text-[#E7E9EE]">Escalated</dt>
-                                <dd>{selectedIncident.escalated ? 'Yes, Tier 2 paged' : 'No'}</dd>
-                            </div>
+                        )}
+
+                        {/* admins: who has asked to take it */}
+                        {isAdmin && requests.length > 0 && (
+                            <ul className="mt-3 flex flex-col gap-2 rounded-md border border-[#262B36] bg-[#1B1F28]/50 p-2">
+                                {requests.map(r => (
+                                    <li key={r.id} className="flex items-center justify-between gap-2 text-xs">
+                                        <span className="flex min-w-0 items-center gap-2">
+                                            <Avatar name={r.name} size="sm" />
+                                            <span className="truncate">{r.name}</span>
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleAssign(r.id)}
+                                            disabled={busy}
+                                            className={`${smallBtn} shrink-0 px-2 py-1`}
+                                        >
+                                            Approve
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+
+                    {/* details */}
+                    <div className="p-4">
+                        <SectionLabel>DETAILS</SectionLabel>
+                        <dl className="divide-y divide-[#262B36]">
+                            <DetailRow label="Opened">
+                                <span className="text-[#E7E9EE]">{formatTime(selectedIncident.opened)}</span>
+                            </DetailRow>
+                            <DetailRow label="Acknowledged">
+                                <span className={selectedIncident.acked ? 'text-[#3DD68C]' : 'text-[#868C9C]'}>
+                                    {selectedIncident.acked ? 'Yes' : 'Pending'}
+                                </span>
+                            </DetailRow>
+                            <DetailRow label="Escalated">
+                                <span className={selectedIncident.escalated ? 'text-[#E5484D]' : 'text-[#868C9C]'}>
+                                    {selectedIncident.escalated ? 'Yes, Tier 2 paged' : 'No'}
+                                </span>
+                            </DetailRow>
                         </dl>
-                    </section>
-                </>
+                    </div>
+                </aside>
             )}
-        </main>
+        </div>
     )
 }

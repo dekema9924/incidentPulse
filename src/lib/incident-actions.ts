@@ -124,6 +124,8 @@ export type IncidentListItem = {
     escalatesAt: number | null   // ms timestamp, only while a P1 is waiting for a first response
 }
 
+
+//get all incidents in org
 export const getIncidents = async (slug: string): Promise<IncidentListItem[]> => {
     // 404s unless the caller belongs to this org; every role (including Viewer) may read
     const { org } = await requireOrgAccess(slug)

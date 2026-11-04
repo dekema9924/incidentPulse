@@ -6,7 +6,7 @@ import { notFound } from 'next/navigation'
 import { prisma } from '@/src/lib/prisma'
 import { RequireDashboard } from './auth-utils'
 import { Role } from '@/components/layout/settings/member/AllMembers'
-import { slugify } from '@/utils/slugify'
+import { slugify } from '@/utils/string-concatenation'
 import { Prisma } from '../generated/prisma/client'
 
 

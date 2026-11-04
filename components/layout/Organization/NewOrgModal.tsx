@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { slugify } from '@/utils/slugify'
+import { slugify } from '@/utils/string-concatenation'
 import { createAdditionalOrganization } from '@/src/lib/dashboard-actions'
 
 const labelClass = 'mb-1.5 block text-[11px] text-[#565C6B]'

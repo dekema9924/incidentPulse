@@ -2,7 +2,7 @@
 import { Prisma } from '../generated/prisma/client'
 import { RequireAuth, RequireDashboard, RequireOnboarding } from './auth-utils'
 import { prisma } from '@/src/lib/prisma'
-import { slugify } from '@/utils/slugify'      // same function the form uses
+import { slugify } from '@/utils/string-concatenation'      // same function the form uses
 import { createOrganizationForUser, requireOrgAccess } from './org-access'
 import { SendInviteMail } from '@/utils/SendInviteMail'
 import { generateInviteToken, hashToken } from '@/utils/invite-token'
