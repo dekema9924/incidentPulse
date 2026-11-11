@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
-import { authClient } from '@/src/lib/auth-client'
+import { authClient } from '@/src/lib/auth/auth-client'
 
 const MIN_PASSWORD = 12
 

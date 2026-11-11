@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { useDashboardContext } from '@/context/DashboardContext'
-import { inviteMember } from '@/src/lib/dashboard-actions'
+import { inviteMember } from '@/src/lib/dashboard/dashboard-actions'
 import toast from 'react-hot-toast'
 import { useOrgModalContext } from '@/context/DashboardModals'
 
@@ -24,7 +24,7 @@ export default function InviteMemberModal({ onClose }: { onClose: () => void }) 
     const [role, setRole] = useState<InviteRole>('MEMBER')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
-    const { refreshInvites } = useOrgModalContext()
+    const { refreshInvites, openPayment } = useOrgModalContext()
 
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
@@ -57,7 +57,12 @@ export default function InviteMemberModal({ onClose }: { onClose: () => void }) 
             const result = await inviteMember({ slug: org.slug, email: cleanEmail, role })
             // console.log("result", result)
             if (!result.success) {
-                setError(result.error); toast.error(result.error)
+                if (result.code === 'MEMBER_LIMIT' && result.upgrade) {
+                    onClose()
+                    openPayment() // the owner is on Free and can fix this by upgrading
+                    return
+                }
+                setError(result.error) // admins and Team owners see what to do next
                 return
             }
             toast.success("email sent successfully")

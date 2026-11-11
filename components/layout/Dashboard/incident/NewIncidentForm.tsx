@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useDashboardContext } from '@/context/DashboardContext'
-import { createIncident } from '@/src/lib/incident-actions'
+import { createIncident } from '@/src/lib/dashboard/incident-actions'
 
 type Severity = 'P1' | 'P2' | 'P3'
 

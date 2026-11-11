@@ -2,7 +2,7 @@
 import { redirect } from 'next/navigation'
 import Logo from '@/components/ui/Logo'
 import { prisma } from '@/src/lib/prisma'
-import { getSession } from '@/src/lib/auth-utils'   // the cached session helper; add `export` to it if it isn't exported yet
+import { getSession } from '@/src/lib/auth/auth-utils'   // the cached session helper; add `export` to it if it isn't exported yet
 import { getValidInvitation } from '@/utils/Invitation'
 import InviteForm from '@/components/layout/AuthLayout/InviteForm'
 import ExistingAccountInvite from '@/components/layout/AuthLayout/ExistingAccountInvite'

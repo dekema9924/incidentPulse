@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { getMembers } from '../../../../src/lib/org-access'
+import { getMembers } from '../../../../src/lib/dashboard/org-access'
 export type Role = 'Owner' | 'Admin' | 'Member' | 'Viewer'
 
 

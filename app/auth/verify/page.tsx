@@ -1,6 +1,6 @@
 'use server'
 
-import { RedirectIfVerified } from "@/src/lib/auth-utils";
+import { RedirectIfVerified } from "@/src/lib/auth/auth-utils";
 import VerifyEmail from "@/components/layout/AuthLayout/VerifyEmail";
 
 

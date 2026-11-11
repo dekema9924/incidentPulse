@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { getMyInvitations, respondToInvitation } from '@/src/lib/accept-invite'
+import { getMyInvitations, respondToInvitation } from '@/src/lib/dashboard/accept-invite'
 
 type MyInvite = { id: string; orgName: string; role: string; invitedBy: string; daysLeft: number }
 

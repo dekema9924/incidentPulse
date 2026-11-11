@@ -4,11 +4,11 @@
 import { cache } from 'react'
 import { notFound } from 'next/navigation'
 import { prisma } from '@/src/lib/prisma'
-import { RequireDashboard } from './auth-utils'
+import { RequireDashboard } from '../auth/auth-utils'
 import { Role } from '@/components/layout/settings/member/AllMembers'
 import { slugify } from '@/utils/string-concatenation'
-import { Prisma } from '../generated/prisma/client'
-
+import { Prisma } from '../../generated/prisma/client'
+import { ORG_LIMITS, orgLimitMessage, type PlanName } from '../billing/plans'
 
 
 const RESERVED_SLUGS = new Set([
@@ -82,9 +82,23 @@ export const getUserOrgs = cache(async (userId: string) => {
 //create new org
 
 
-type CreateOrgResult =
+// src/lib/create-org.ts   (plain module, never 'use server': it takes a userId)
+
+export type CreateOrgResult =
     | { success: true; slug: string }
-    | { success: false; error: string }
+    | { success: false; error: string; code?: 'ORG_LIMIT' }
+
+// thrown inside the transaction: it rolls everything back, and the catch below turns it into a normal result
+class OrgLimitError extends Error {
+    constructor(public plan: PlanName) {
+        super('ORG_LIMIT')
+    }
+}
+class UserMissingError extends Error { }
+
+const isPrismaError = (e: unknown, code: string) =>
+    e instanceof Prisma.PrismaClientKnownRequestError && e.code === code
+
 export async function createOrganizationForUser(
     userId: string,
     input: { name: string; slug?: string }
@@ -100,25 +114,58 @@ export async function createOrganizationForUser(
     }
     if (RESERVED_SLUGS.has(base)) base = `${base}-org`
 
+    let slugTaken = false
+
     for (let attempt = 0; attempt < 5; attempt++) {
         const slug = attempt === 0 ? base : `${base}-${Math.floor(100 + Math.random() * 900)}`
 
         try {
-            await prisma.organization.create({
-                data: {
-                    name,
-                    slug,
-                    memberships: { create: { userId, role: 'OWNER' } }, // org + Owner in one atomic write
+            await prisma.$transaction(
+                async tx => {
+                    const user = await tx.user.findUnique({
+                        where: { id: userId },
+                        select: { plan: true },
+                    })
+                    if (!user) throw new UserMissingError()
+
+                    // only organizations they OWN count; ones they were invited into don't
+                    const owned = await tx.membership.count({ where: { userId, role: 'OWNER' } })
+                    if (owned >= ORG_LIMITS[user.plan]) throw new OrgLimitError(user.plan)
+
+                    await tx.organization.create({
+                        data: {
+                            name,
+                            slug,
+                            memberships: { create: { userId, role: 'OWNER' } }, // org + Owner, written together
+                        },
+                    })
                 },
-            })
+                { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+            )
+
             return { success: true, slug }
         } catch (e) {
-            // P2002 = slug already taken, so try again with a suffix
-            if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') continue
+            if (e instanceof OrgLimitError) {
+                return { success: false, code: 'ORG_LIMIT', error: orgLimitMessage(e.plan) }
+            }
+            if (e instanceof UserMissingError) {
+                return { success: false, error: 'Account not found.' }
+            }
+            if (isPrismaError(e, 'P2002')) {
+                slugTaken = true // slug already used: try again with a suffix
+                continue
+            }
+            if (isPrismaError(e, 'P2034')) continue // two requests collided: retry once more
+
             console.error('createOrganizationForUser failed', e)
             return { success: false, error: 'Something went wrong. Please try again.' }
         }
     }
 
-    return { success: false, error: 'That URL is taken. Try a different one.' }
+    return {
+        success: false,
+        error: slugTaken
+            ? 'That URL is taken. Try a different one.'
+            : 'Could not create the organization right now. Please try again.',
+    }
 }

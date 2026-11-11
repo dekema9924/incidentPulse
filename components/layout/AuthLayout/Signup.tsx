@@ -5,10 +5,10 @@ import Logo from '@/components/ui/Logo'
 import Link from 'next/link'
 import { useForm, SubmitHandler } from "react-hook-form"
 import PasswordInput from '@/components/ui/Passwordinput'
-import { SignUp } from '@/src/lib/auth-actions'
+import { SignUp } from '@/src/lib/auth/auth-actions'
 import toast from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
-import { SendVerificationOTP } from '@/src/lib/auth-actions'
+import { SendVerificationOTP } from '@/src/lib/auth/auth-actions'
 
 
 

@@ -5,7 +5,7 @@ import { useForm, SubmitHandler } from "react-hook-form"
 import PasswordInput from '@/components/ui/Passwordinput'
 import toast from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
-import { SendVerificationOTP, SignIn } from '@/src/lib/auth-actions'
+import { SendVerificationOTP, SignIn } from '@/src/lib/auth/auth-actions'
 import { safeCallbackUrl } from '@/src/lib/safe-redirect'
 
 

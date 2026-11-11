@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "user" ADD COLUMN     "seats" INTEGER NOT NULL DEFAULT 0;

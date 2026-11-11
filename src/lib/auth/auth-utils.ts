@@ -1,6 +1,6 @@
 'use server'
 
-import { auth } from "@/src/lib/auth";
+import { auth } from "@/src/lib/auth/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from '@/src/lib/prisma'
@@ -11,6 +11,8 @@ import { cache } from "react";
 export const getSession = cache(async () =>
     auth.api.getSession({ headers: await headers() })
 )
+
+
 
 const getOrgCount = cache(async (userId: string) =>
     prisma.membership.count({ where: { userId } })

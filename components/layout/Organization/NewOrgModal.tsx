@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { slugify } from '@/utils/string-concatenation'
-import { createAdditionalOrganization } from '@/src/lib/dashboard-actions'
+import { createAdditionalOrganization } from '@/src/lib/dashboard/dashboard-actions'
+import { useOrgModalContext } from '@/context/DashboardModals'
 
 const labelClass = 'mb-1.5 block text-[11px] text-[#565C6B]'
 const inputClass =
@@ -18,6 +19,7 @@ export default function NewOrgModal({ onClose }: { onClose: () => void }) {
     const [slugEdited, setSlugEdited] = useState(false)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const { openPayment } = useOrgModalContext()
 
     // Escape closes the modal, and the page behind it stops scrolling while it's open
     useEffect(() => {
@@ -64,9 +66,14 @@ export default function NewOrgModal({ onClose }: { onClose: () => void }) {
 
 
 
-            // TODO: call your create-additional-organization server action here
+            //  create-additional-organization server action 
             const result = await createAdditionalOrganization({ name: name.trim(), slug: finalSlug })
             if (!result.success) {
+                if (result.code === 'ORG_LIMIT') {
+                    onClose()
+                    openPayment()
+                    return
+                }
                 setError(result.error)
                 return
             }

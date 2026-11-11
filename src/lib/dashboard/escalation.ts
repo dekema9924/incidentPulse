@@ -73,3 +73,18 @@ export async function runEscalationCheck() {
         }
     }
 }
+
+
+
+
+const ARCHIVE_AFTER_DAYS = 14
+
+export async function archiveOldResolved() {
+    const cutoff = new Date(Date.now() - ARCHIVE_AFTER_DAYS * 24 * 60 * 60 * 1000)
+
+    const res = await prisma.incident.updateMany({
+        where: { status: 'RESOLVED', archivedAt: null, resolvedAt: { lte: cutoff } },
+        data: { archivedAt: new Date() },
+    })
+    return res.count
+}

@@ -13,7 +13,8 @@ import {
     assignIncident,
     requestIncident,
     type IncidentListItem,
-} from '@/src/lib/incident-actions'
+    archiveIncident,
+} from '@/src/lib/dashboard/incident-actions'
 import { formatTime } from '@/utils/constants'
 import { EscalationCountdown } from './EscalationCountdown'
 
@@ -23,6 +24,10 @@ type Status = IncidentListItem['status']
 type Member = { id: string; name: string }
 type ActionResult = { success: true } | { success: false; error: string }
 type IncidentDetail = NonNullable<Awaited<ReturnType<typeof getIncident>>>
+type Filter = 'open' | 'resolved' | 'all'
+
+const matches = (i: IncidentListItem, f: Filter) =>
+    f === 'all' ? true : f === 'open' ? i.status !== 'Resolved' : i.status === 'Resolved'
 
 // Height of the three-column workspace on desktop. Adjust 8rem to match your header height plus the page padding.
 const PAGE_HEIGHT = 'lg:h-[calc(100dvh-8rem)]'
@@ -157,6 +162,7 @@ export default function IncidentsPage() {
     const [incidents, setIncidents] = useState<IncidentListItem[]>([])
     const [loaded, setLoaded] = useState(false)
     const [selectedId, setSelectedId] = useState<string | null>(null)
+    const [filter, setFilter] = useState<Filter>('open')
     const [openIncidentModal, setOpenIncidentModal] = useState(false)
     const [version, setVersion] = useState(0) // bump to refetch the queue and the open incident
     const [busy, setBusy] = useState(false)
@@ -164,13 +170,21 @@ export default function IncidentsPage() {
     const [loadedDetail, setLoadedDetail] = useState<(IncidentDetail & { incidentId: string }) | null>(null)
     const timelineEndRef = useRef<HTMLDivElement>(null)
     const detailRef = useRef<HTMLElement>(null)
+    const filterRef = useRef<Filter>('open') // lets the refetch effect read the current tab without re-running on every tab change
 
     const selectedIncident = incidents.find(i => i.id === selectedId)
+    const visible = incidents.filter(i => matches(i, filter))
+    const openCount = incidents.filter(i => matches(i, 'open')).length
+    const resolvedCount = incidents.length - openCount
 
     // detail belongs to one incident; ignore it while a different one is selected
     const detail = loadedDetail?.incidentId === selectedId ? loadedDetail : null
     const requests = detail?.requests ?? []
     const requestedByMe = detail?.requestedByMe ?? false
+
+    useEffect(() => {
+        filterRef.current = filter
+    }, [filter])
 
     // the queue
     useEffect(() => {
@@ -181,8 +195,9 @@ export default function IncidentsPage() {
                 if (cancelled) return
                 setIncidents(data)
                 setLoaded(true)
-                // keep the current selection if it still exists, otherwise open the first incident
-                setSelectedId(prev => (prev && data.some(i => i.id === prev) ? prev : data[0]?.id ?? null))
+                // keep the current selection if it still exists, otherwise open the first incident on the current tab
+                const pool = data.filter(i => matches(i, filterRef.current))
+                setSelectedId(prev => (prev && data.some(i => i.id === prev) ? prev : pool[0]?.id ?? null))
             })
             .catch(() => {
                 if (cancelled) return
@@ -230,6 +245,24 @@ export default function IncidentsPage() {
                 detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
             )
         }
+    }
+
+
+    //archive
+    const handleArchive = () => {
+        if (!selectedIncident) return
+        if (!window.confirm(`Archive ${selectedIncident.code}? It will be hidden from the queue.`)) return
+        return run(
+            () => archiveIncident({ slug: org.slug, incidentId: selectedIncident.id }),
+            'Incident archived.'
+        )
+    }
+
+    const changeFilter = (f: Filter) => {
+        setFilter(f)
+        const next = incidents.filter(i => matches(i, f))
+        // keep the current selection if it's still in the list, otherwise open the first one
+        setSelectedId(prev => (prev && next.some(i => i.id === prev) ? prev : next[0]?.id ?? null))
     }
 
     // one place for busy state, errors, toasts and refetching
@@ -282,20 +315,15 @@ export default function IncidentsPage() {
             {/* ===== incident queue ===== */}
             <aside className="flex max-h-72 w-full shrink-0 flex-col border-b border-[#262B36] lg:max-h-none lg:w-72 lg:border-b-0 lg:border-r">
                 <div className="flex items-center justify-between gap-2 border-b border-[#262B36] px-4 py-3">
-                    <div className="flex items-center gap-2">
-                        <h2 className="text-[11px] font-semibold tracking-wider text-[#868C9C]">INCIDENT QUEUE</h2>
-                        <span className="rounded-full bg-[#1B1F28] px-1.5 text-[10px] text-[#868C9C]">
-                            {incidents.length}
-                        </span>
-                    </div>
+                    <h2 className="text-[11px] font-semibold tracking-wider text-[#868C9C]">INCIDENT QUEUE</h2>
 
                     {canPost && (
                         <button
                             type="button"
                             onClick={() => setOpenIncidentModal(v => !v)}
                             className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${focusRing} ${openIncidentModal
-                                    ? 'border-[#262B36] bg-[#1B1F28] hover:border-[#3a4152]'
-                                    : 'border-[#33477A] bg-[#243352] hover:border-[#4A63A0]'
+                                ? 'border-[#262B36] bg-[#1B1F28] hover:border-[#3a4152]'
+                                : 'border-[#33477A] bg-[#243352] hover:border-[#4A63A0]'
                                 }`}
                         >
                             {!openIncidentModal && <PlusIcon className="h-3.5 w-3.5" />}
@@ -304,11 +332,34 @@ export default function IncidentsPage() {
                     )}
                 </div>
 
+                {/* filter tabs */}
+                <div role="tablist" aria-label="Filter incidents" className="flex gap-1 border-b border-[#262B36] px-3 py-2">
+                    {([
+                        ['open', 'Open', openCount],
+                        ['resolved', 'Resolved', resolvedCount],
+                        ['all', 'All', incidents.length],
+                    ] as const).map(([value, label, count]) => (
+                        <button
+                            key={value}
+                            type="button"
+                            role="tab"
+                            aria-selected={filter === value}
+                            onClick={() => changeFilter(value)}
+                            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs transition-colors ${focusRing} ${filter === value ? 'bg-[#1B1F28] text-white' : 'text-[#868C9C] hover:text-white'
+                                }`}
+                        >
+                            {label}
+                            <span className="text-[10px] text-[#565C6B]">{count}</span>
+                        </button>
+                    ))}
+                </div>
+
                 {openIncidentModal && (
                     <NewIncidentForm
                         onCreated={id => {
                             setVersion(v => v + 1)
                             setSelectedId(id)
+                            setFilter('open') // a new incident is open, so make sure it isn't hidden by the current tab
                             setOpenIncidentModal(false)
                         }}
                     />
@@ -326,16 +377,26 @@ export default function IncidentsPage() {
                             </li>
                         ))}
 
-                    {loaded && incidents.length === 0 && (
+                    {loaded && visible.length === 0 && (
                         <li className="px-4 py-10 text-center">
-                            <p className="text-[13px] font-medium">No incidents yet</p>
+                            <p className="text-[13px] font-medium">
+                                {incidents.length === 0
+                                    ? 'No incidents yet'
+                                    : filter === 'resolved'
+                                        ? 'Nothing resolved yet'
+                                        : 'No open incidents'}
+                            </p>
                             <p className="mt-1 text-xs text-[#868C9C]">
-                                {canPost ? 'Open one when something breaks.' : 'Nothing has been reported.'}
+                                {incidents.length === 0
+                                    ? canPost
+                                        ? 'Open one when something breaks.'
+                                        : 'Nothing has been reported.'
+                                    : 'Switch tabs to see other incidents.'}
                             </p>
                         </li>
                     )}
 
-                    {incidents.map(inc => {
+                    {visible.map(inc => {
                         const active = inc.id === selectedId
 
                         return (
@@ -380,11 +441,17 @@ export default function IncidentsPage() {
                                 <CircleCheck className="h-5 w-5" />
                             </span>
                             <p className="text-sm font-medium">
-                                {incidents.length === 0 ? 'All clear' : 'Select an incident'}
+                                {visible.length === 0
+                                    ? filter === 'open'
+                                        ? 'All clear'
+                                        : 'Nothing here yet'
+                                    : 'Select an incident'}
                             </p>
                             <p className="max-w-xs text-xs text-[#868C9C]">
-                                {incidents.length === 0
-                                    ? 'There are no incidents in this workspace right now.'
+                                {visible.length === 0
+                                    ? incidents.length === 0
+                                        ? 'There are no incidents in this workspace right now.'
+                                        : 'Nothing in this view. Try another tab.'
                                     : 'Pick one from the queue to see its timeline.'}
                             </p>
                         </div>
@@ -435,6 +502,12 @@ export default function IncidentsPage() {
                                         className={btnNeutral}
                                     >
                                         Generate postmortem
+                                    </button>
+                                )}
+
+                                {isAdmin && selectedIncident.status === 'Resolved' && (
+                                    <button type="button" onClick={handleArchive} disabled={busy} className={btnNeutral}>
+                                        Archive
                                     </button>
                                 )}
                             </div>
@@ -491,7 +564,10 @@ export default function IncidentsPage() {
                 <aside className="w-full shrink-0 overflow-y-auto border-t border-[#262B36] lg:w-72 lg:border-l lg:border-t-0">
                     {selectedIncident.escalatesAt && selectedIncident.status !== 'Resolved' && (
                         <div className="border-b border-[#262B36] p-4 pb-0">
-                            <EscalationCountdown escalatesAt={selectedIncident.escalatesAt} />
+                            <EscalationCountdown
+                                escalatesAt={selectedIncident.escalatesAt}
+                                onExpired={() => setVersion(v => v + 1)}
+                            />
                         </div>
                     )}
 

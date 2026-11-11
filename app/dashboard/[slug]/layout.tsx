@@ -3,10 +3,12 @@ import { ReactNode } from 'react'
 import DashboardHeader from '@/components/layout/Dashboard/DashboardHeader'
 import DashboardSideBar from '@/components/layout/Dashboard/DashboardSideBar'
 import { DashboardContextProvider } from '@/context/DashboardContext'
-import { getUserOrgs, requireOrgAccess } from '@/src/lib/org-access'
+import { getUserOrgs, requireOrgAccess } from '@/src/lib/dashboard/org-access'
 import { OrgModalContextProvider } from '@/context/DashboardModals'
 import RenderModals from '@/components/layout/Organization/RenderModals'
-import { getMyInvitations } from '@/src/lib/accept-invite'
+import { getMyInvitations } from '@/src/lib/dashboard/accept-invite'
+import { prisma } from '@/src/lib/prisma'
+import { ORG_LIMITS } from '@/src/lib/billing/plans'
 
 export default async function DashboardLayout({
     children,
@@ -21,8 +23,19 @@ export default async function DashboardLayout({
     const { org, role, session } = await requireOrgAccess(slug)
     const orgs = await getUserOrgs(session.user.id)
 
+    const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { plan: true },
+    })
+
+    const plan = user?.plan ?? 'FREE'
+    const canCreateOrg = orgs.filter(o => o.role === 'OWNER').length < ORG_LIMITS[plan]
+
+
+
+
     return (
-        <DashboardContextProvider org={org} orgs={orgs} role={role} inviteCount={inviteCount}>
+        <DashboardContextProvider org={org} plan={plan} canCreateOrg={canCreateOrg} orgs={orgs} role={role} inviteCount={inviteCount}>
             <OrgModalContextProvider>
                 <div className="flex min-h-screen">
                     {/* Left side */}

@@ -3,8 +3,8 @@
 
 import CreateOrg from '@/components/layout/AuthLayout/CreateOrg'
 import Inbox from '@/components/layout/Dashboard/Inbox'
-import { getMyInvitations } from '@/src/lib/accept-invite'
-import { RequireOnboarding } from '@/src/lib/auth-utils'
+import { getMyInvitations } from '@/src/lib/dashboard/accept-invite'
+import { RequireOnboarding } from '@/src/lib/auth/auth-utils'
 
 export default async function page() {
     const invites = await getMyInvitations()

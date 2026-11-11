@@ -6,7 +6,7 @@ import Button from '@/components/ui/Button'
 import PasswordInput from '@/components/ui/Passwordinput'
 import toast from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
-import { MemberSignUp, SignIn } from '@/src/lib/auth-actions'
+import { MemberSignUp, SignIn } from '@/src/lib/auth/auth-actions'
 
 type InviteFormData = {
     name: string

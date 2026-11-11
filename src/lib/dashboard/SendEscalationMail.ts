@@ -1,5 +1,5 @@
 import { escapeHtml, singleLine } from "@/utils/string-concatenation"
-import { transporter } from "./nodemailer"
+import { transporter } from "../nodemailer"
 
 type EscalationMailInput = {
     to: string[]            // owner and admin emails

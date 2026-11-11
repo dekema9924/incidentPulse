@@ -1,6 +1,14 @@
-import { useState, useEffect } from "react"
+'use client'
 
-export function EscalationCountdown({ escalatesAt }: { escalatesAt: number }) {
+import { useEffect, useRef, useState } from 'react'
+
+export function EscalationCountdown({
+    escalatesAt,
+    onExpired,
+}: {
+    escalatesAt: number
+    onExpired?: () => void
+}) {
     const [secondsLeft, setSecondsLeft] = useState<number | null>(null)
 
     useEffect(() => {
@@ -10,7 +18,20 @@ export function EscalationCountdown({ escalatesAt }: { escalatesAt: number }) {
         return () => clearInterval(t)
     }, [escalatesAt])
 
-    if (secondsLeft === null) return null // first render only, which avoids a server/client mismatch
+    // always call the latest callback without restarting the timer below
+    const onExpiredRef = useRef(onExpired)
+    useEffect(() => { onExpiredRef.current = onExpired })
+
+    // at zero: refetch now, then every 10 seconds until the server confirms
+    const expired = secondsLeft === 0
+    useEffect(() => {
+        if (!expired) return
+        onExpiredRef.current?.()
+        const t = setInterval(() => onExpiredRef.current?.(), 10_000)
+        return () => clearInterval(t)
+    }, [expired])
+
+    if (secondsLeft === null) return null
 
     const mm = String(Math.floor(secondsLeft / 60)).padStart(2, '0')
     const ss = String(secondsLeft % 60).padStart(2, '0')

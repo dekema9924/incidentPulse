@@ -2,7 +2,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { authClient } from '@/src/lib/auth-client'
+import { authClient } from '@/src/lib/auth/auth-client'
 
 export default function SwitchAccountButton() {
     const router = useRouter()

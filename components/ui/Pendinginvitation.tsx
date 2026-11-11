@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { inviteMember } from '@/src/lib/dashboard-actions' // wherever your inviteMember lives
+import { inviteMember } from '@/src/lib/dashboard/dashboard-actions' // wherever your inviteMember lives
 import { useOrgModalContext } from '@/context/DashboardModals'
-import { getPendingInvites, revokeInvitation } from '@/src/lib/accept-invite'
+import { getPendingInvites, revokeInvitation } from '@/src/lib/dashboard/accept-invite'
 
 type PendingInvite = {
     id: string

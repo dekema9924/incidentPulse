@@ -1,6 +1,6 @@
 "use client";
 
-import { SendVerificationOTP, VerifyOTP } from "@/src/lib/auth-actions";
+import { SendVerificationOTP, VerifyOTP } from "@/src/lib/auth/auth-actions";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";

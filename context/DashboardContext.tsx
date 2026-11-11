@@ -3,6 +3,8 @@ import React, { useState, createContext, useContext, Dispatch, SetStateAction } 
 
 export type Role = 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER'
 export interface Org { id: string; name: string; slug: string }
+export type Plan = 'FREE' | 'TEAM' | 'LIFETIME'
+
 
 type DashboardContextType = {
     isActiveId: number
@@ -13,6 +15,9 @@ type DashboardContextType = {
     isAdmin: boolean   // OWNER or ADMIN: can assign incidents, approve requests, invite
     canPost: boolean   // everyone except VIEWER: can post, acknowledge, resolve
     inviteCount: number
+    plan: Plan
+    canCreateOrg: boolean
+
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(
@@ -25,12 +30,17 @@ export const DashboardContextProvider = ({
     orgs,
     role,
     inviteCount,
+    plan,
+    canCreateOrg,
 }: {
     children: React.ReactNode
     org: Org
     orgs: Org[]
     role: Role,
-    inviteCount: number
+    inviteCount: number,
+    plan: Plan,
+    canCreateOrg: boolean
+
 }) => {
     const [isActiveId, setIsActiveId] = useState<number>(1);
 
@@ -39,7 +49,7 @@ export const DashboardContextProvider = ({
 
     return (
         <DashboardContext.Provider
-            value={{ isActiveId, setIsActiveId, org, role, isAdmin, inviteCount, canPost, orgs }}
+            value={{ isActiveId, plan, canCreateOrg, setIsActiveId, org, role, isAdmin, inviteCount, canPost, orgs }}
         >
             {children}
         </DashboardContext.Provider>

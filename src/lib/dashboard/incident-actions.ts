@@ -1,12 +1,48 @@
 'use server'
 
 import { prisma } from '@/src/lib/prisma'
-import { requireOrgAccess } from '@/src/lib/org-access'
+import { requireOrgAccess } from '@/src/lib/dashboard/org-access'
 import { ESCALATION_SLA_MS } from '@/utils/constants'
-import { success } from 'better-auth'
 
 
+const listIncidents = (where: { organizationId: string; assigneeId?: string }) =>
+    prisma.incident.findMany({
+        where: { ...where, archivedAt: null },
+        orderBy: { createdAt: 'desc' },
+        take: 100, // add paging later
+        select: {
+            id: true,
+            number: true,
+            title: true,
+            severity: true,
+            status: true,
+            createdAt: true,
+            acknowledgedAt: true,
+            escalatedAt: true,
+            resolvedAt: true,
+            assignee: { select: { id: true, name: true } },
+        },
+    })
 
+type IncidentRow = Awaited<ReturnType<typeof listIncidents>>[number]
+
+const toListItem = (r: IncidentRow): IncidentListItem => ({
+    id: r.id,
+    code: `INC-${r.number}`,
+    title: r.title,
+    severity: r.severity,
+    status: STATUS_LABEL[r.status],
+    opened: r.createdAt.getTime(),
+    acked: r.acknowledgedAt !== null,
+    escalated: r.escalatedAt !== null,
+    resolvedAt: r.resolvedAt?.getTime() ?? null,
+    assignee: r.assignee?.name ?? null,
+    assigneeId: r.assignee?.id ?? null,
+    escalatesAt:
+        r.severity === 'P1' && !r.acknowledgedAt && !r.escalatedAt && r.status !== 'RESOLVED'
+            ? r.createdAt.getTime() + ESCALATION_SLA_MS
+            : null,
+})
 
 
 
@@ -129,42 +165,8 @@ export type IncidentListItem = {
 export const getIncidents = async (slug: string): Promise<IncidentListItem[]> => {
     // 404s unless the caller belongs to this org; every role (including Viewer) may read
     const { org } = await requireOrgAccess(slug)
-
-    const rows = await prisma.incident.findMany({
-        where: { organizationId: org.id }, // always scoped by the verified org, never by client input
-        orderBy: { createdAt: 'desc' },
-        take: 100, // add paging later; the queue doesn't need years of history
-        select: {
-            id: true,
-            number: true,
-            title: true,
-            severity: true,
-            status: true,
-            createdAt: true,
-            acknowledgedAt: true,
-            escalatedAt: true,
-            resolvedAt: true,
-            assignee: { select: { id: true, name: true } },
-        },
-    })
-
-    return rows.map(r => ({
-        id: r.id,
-        code: `INC-${r.number}`,
-        title: r.title,
-        severity: r.severity,
-        status: STATUS_LABEL[r.status],
-        opened: r.createdAt.getTime(),
-        acked: r.acknowledgedAt !== null,
-        escalated: r.escalatedAt !== null,
-        resolvedAt: r.resolvedAt?.getTime() ?? null,
-        assignee: r.assignee?.name ?? null,
-        assigneeId: r.assignee?.id ?? null,
-        escalatesAt:
-            r.severity === 'P1' && !r.acknowledgedAt && !r.escalatedAt && r.status !== 'RESOLVED'
-                ? r.createdAt.getTime() + ESCALATION_SLA_MS
-                : null,
-    }))
+    const rows = await listIncidents({ organizationId: org.id })
+    return rows.map(toListItem)
 }
 
 // timeline + pending assignment requests for the one incident that is open
@@ -308,6 +310,8 @@ export const getOrgMembers = async (slug: string) => {
     })
     return rows.map(r => ({ id: r.user.id, name: r.user.name }))
 }
+
+
 //assign incidents
 // userId = null means "unassign"
 export const assignIncident = async (input: {
@@ -417,4 +421,54 @@ export const requestIncident = async (input: {
         console.error('requestIncident failed', e)
         return { success: false, error: 'Something went wrong. Please try again.' }
     }
+}
+
+
+
+
+
+//ARCHIVE INCIDENTS
+export const archiveIncident = async (input: {
+    slug: string
+    incidentId: string
+}): Promise<ActionResult> => {
+    const { org, role } = await requireOrgAccess(input.slug)
+
+    if (role !== 'OWNER' && role !== 'ADMIN') {
+        return { success: false, error: 'Only owners and admins can archive incidents.' }
+    }
+
+    try {
+        const res = await prisma.incident.updateMany({
+            where: {
+                id: input.incidentId,
+                organizationId: org.id,   // an ID from another org matches nothing
+                status: 'RESOLVED',       // open incidents can't be hidden
+                archivedAt: null,
+            },
+            data: { archivedAt: new Date() },
+        })
+
+        if (res.count === 0) {
+            return { success: false, error: 'Only resolved incidents can be archived.' }
+        }
+        return { success: true }
+    } catch (e) {
+        console.error('archiveIncident failed', e)
+        return { success: false, error: 'Something went wrong. Please try again.' }
+    }
+}
+
+
+
+
+
+
+// get single users incidents
+
+// only the incidents assigned to the signed-in user in this workspace
+export const getMyIncidents = async (slug: string): Promise<IncidentListItem[]> => {
+    const { org, session } = await requireOrgAccess(slug)
+    const rows = await listIncidents({ organizationId: org.id, assigneeId: session.user.id })
+    return rows.map(toListItem)
 }

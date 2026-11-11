@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import Logo from '@/components/ui/Logo'
 import Button from '@/components/ui/Button'
-import { respondToInvitation } from '@/src/lib/accept-invite'
+import { respondToInvitation } from '@/src/lib/dashboard/accept-invite'
 
 const roleLabel = (role: string) => role.charAt(0) + role.slice(1).toLowerCase()
 

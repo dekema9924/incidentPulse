@@ -4,9 +4,9 @@ import MyIncidents from '@/components/layout/Dashboard/incident/MyIncidents';
 import { useDashboardContext } from '@/context/DashboardContext'
 import Calendar from '@/components/layout/Dashboard/Calendar';
 import Settings from '@/components/layout/settings/General';
-import DashboardPage from '../../page';
 import IncidentsPage from '@/components/layout/Dashboard/incident/IncidentsPage';
 import Inbox from '@/components/layout/Dashboard/Inbox';
+import Dashboard from '@/components/layout/Dashboard/Dashboard';
 
 export default function page() {
     const { isActiveId } = useDashboardContext()
@@ -14,7 +14,7 @@ export default function page() {
     const renderPage = () => {
         switch (isActiveId) {
             case 1:
-                return <DashboardPage />;
+                return <Dashboard />;
 
             case 2:
                 return <IncidentsPage />;
@@ -32,7 +32,7 @@ export default function page() {
                 return <Inbox />
 
             default:
-                return <DashboardPage />;
+                return <Dashboard />;
         }
     };
     return (

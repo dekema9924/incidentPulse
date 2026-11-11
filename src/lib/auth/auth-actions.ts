@@ -1,8 +1,8 @@
 'use server'
-import { auth } from '@/src/lib/auth'
+import { auth } from '@/src/lib/auth/auth'
 import { headers } from 'next/headers'
-import { prisma } from './prisma'
-import { claimInvitation } from './accept-invite'
+import { prisma } from '../prisma'
+import { claimInvitation } from '../dashboard/accept-invite'
 import { getValidInvitation } from '@/utils/Invitation'
 
 

@@ -2,7 +2,7 @@
 import type { Invitation } from '@/src/generated/prisma/client'
 import { prisma } from '@/src/lib/prisma'
 import { requireOrgAccess } from './org-access'
-import { RequireAuth } from './auth-utils'
+import { RequireAuth } from '../auth/auth-utils'
 
 export async function claimInvitation(
     userId: string,

@@ -11,8 +11,8 @@ const initials = (name: string) => {
 }
 
 export default function OrgSwitcher() {
-    const { org, orgs } = useDashboardContext()
-    const { setNewOrgOpen } = useOrgModalContext()
+    const { org, orgs, canCreateOrg } = useDashboardContext()
+    const { setNewOrgOpen, openPayment } = useOrgModalContext()
 
     return (
         <div className="absolute top-12 w-full overflow-hidden rounded-lg border border-[#262B36] bg-[#1B1F28] text-[13px] text-[#E7E9EE] shadow-lg">
@@ -41,11 +41,14 @@ export default function OrgSwitcher() {
             {/* new organization */}
             <button
                 type="button"
-                onClick={() => setNewOrgOpen(true)}
+                onClick={() => (canCreateOrg ? setNewOrgOpen(true) : openPayment())}
                 className="flex w-full items-center gap-2 border-t border-[#262B36] px-3.5 py-2.5 text-left text-[#5B8DEF] transition-colors hover:bg-[#15181F]"
             >
                 <Plus className="h-3.5 w-3.5" />
                 New organization
+                {!canCreateOrg && (
+                    <span className="ml-auto rounded-full bg-[#243352] px-2 py-px text-[10px] text-[#A9C0FF]">Upgrade</span>
+                )}
             </button>
         </div>
     )

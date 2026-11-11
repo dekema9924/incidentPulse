@@ -23,6 +23,7 @@ body {
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
   color: var(--text);
+  scroll-behavior: smooth;
 }
 
 .secondary-text {

@@ -1,6 +1,6 @@
 // app/dashboard/page.tsx
 import { redirect } from 'next/navigation'
-import { RequireDashboard } from '@/src/lib/auth-utils'
+import { RequireDashboard } from '@/src/lib/auth/auth-utils'
 import { prisma } from '@/src/lib/prisma'
 
 export default async function DashboardIndex() {

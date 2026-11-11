@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation'
 import { useDashboardContext } from '@/context/DashboardContext'
 import { slugify } from '@/utils/string-concatenation'
 import Account from './Account'
-import { updateOrganization } from '@/src/lib/dashboard-actions'
+import { updateOrganization } from '@/src/lib/dashboard/dashboard-actions'
 import Members from './member/Members'
-import { getMembers } from '@/src/lib/org-access'
+import { getMembers } from '@/src/lib/dashboard/org-access'
 
 
 

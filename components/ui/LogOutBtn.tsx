@@ -1,6 +1,6 @@
 "use client";
 
-import { SignOut } from "@/src/lib/auth-actions";
+import { SignOut } from "@/src/lib/auth/auth-actions";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 

@@ -1,9 +1,9 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { prisma } from "./prisma";
+import { prisma } from "../prisma";
 import { nextCookies } from "better-auth/next-js";
 import { emailOTP, multiSession } from "better-auth/plugins";
-import { SendMail } from "./nodemailer";
+import { SendMail } from "../nodemailer";
 
 export const auth = betterAuth({
     database: prismaAdapter(prisma, {
