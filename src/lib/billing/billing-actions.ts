@@ -4,6 +4,8 @@
 import { prisma } from '@/src/lib/prisma'
 import { RequireAuth } from '../auth/auth-utils'
 import { stripe } from '@/src/lib/stripe'
+import { memberLimitFor, ORG_LIMITS, PlanName } from './plans'
+import { requireOrgAccess } from '../dashboard/org-access'
 
 type PaidPlan = 'TEAM' | 'LIFETIME'
 
@@ -63,5 +65,74 @@ export const createCheckoutSession = async (input: {
     } catch (e) {
         console.error('createCheckoutSession failed', e)
         return { success: false, error: 'Could not start checkout. Please try again.' }
+    }
+}
+
+
+
+
+
+// get user billing plans
+export type PlanSummary = {
+    plan: PlanName                // the signed-in user's own plan
+    ownedOrgs: number
+    orgLimit: number | null         // null = unlimited
+    isOwner: boolean
+    // only filled in for owners and admins; members get null
+    workspace: null | {
+        plan: PlanName              // the plan covering this workspace: its OWNER's plan
+        members: number
+        pending: number
+        limit: number | null        // null = unlimited
+        seatsLeft: number | null    // null = unlimited
+    }
+}
+
+// Infinity doesn't survive JSON, so send null for "unlimited"
+const finite = (n: number) => (Number.isFinite(n) ? n : null)
+
+export const getPlanSummary = async (slug: string): Promise<PlanSummary> => {
+    const { session, org, role } = await requireOrgAccess(slug)
+    const isAdmin = role === 'OWNER' || role === 'ADMIN'
+
+    const [me, ownedOrgs] = await Promise.all([
+        prisma.user.findUnique({ where: { id: session.user.id }, select: { plan: true } }),
+        prisma.membership.count({ where: { userId: session.user.id, role: 'OWNER' } }),
+    ])
+    const plan = (me?.plan ?? 'FREE') as PlanName
+
+    let workspace: PlanSummary['workspace'] = null
+
+    if (isAdmin) {
+        const [owner, members, pending] = await Promise.all([
+            prisma.membership.findFirst({
+                where: { organizationId: org.id, role: 'OWNER' },
+                select: { user: { select: { plan: true, seats: true } } },
+            }),
+            prisma.membership.count({ where: { organizationId: org.id } }),
+            prisma.invitation.count({
+                where: { organizationId: org.id, status: 'PENDING', expiresAt: { gt: new Date() } },
+            }),
+        ])
+
+        // same rule inviteMember enforces, so the screen and the server agree
+        const workspacePlan = (owner?.user.plan ?? 'FREE') as PlanName
+        const limit = memberLimitFor(workspacePlan, owner?.user.seats ?? 0)
+
+        workspace = {
+            plan: workspacePlan,
+            members,
+            pending,
+            limit: finite(limit),
+            seatsLeft: Number.isFinite(limit) ? Math.max(0, limit - members - pending) : null,
+        }
+    }
+
+    return {
+        plan,
+        ownedOrgs,
+        orgLimit: finite(ORG_LIMITS[plan]),
+        isOwner: role === 'OWNER',
+        workspace,
     }
 }

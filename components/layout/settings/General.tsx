@@ -8,6 +8,7 @@ import Account from './Account'
 import { updateOrganization } from '@/src/lib/dashboard/dashboard-actions'
 import Members from './member/Members'
 import { getMembers } from '@/src/lib/dashboard/org-access'
+import Plan from './Plan'
 
 
 
@@ -15,7 +16,7 @@ import { getMembers } from '@/src/lib/dashboard/org-access'
 
 
 
-type Tab = 'general' | 'members' | 'account'
+type Tab = 'general' | 'members' | 'account' | "plan"
 
 
 export default function Settings() {
@@ -27,6 +28,7 @@ export default function Settings() {
         { id: 'general', label: 'General' },
         { id: 'members', label: `Members (${memberCount})` },
         { id: 'account', label: 'Account' },
+        { id: 'plan', label: 'Plan' }
     ]
 
     // console.log(org)
@@ -157,6 +159,7 @@ export default function Settings() {
 
             {tab === 'members' && <div className="mt-5"><Members /></div>}
             {tab === 'account' && <div className="mt-5"><Account /></div>}
+            {tab === 'plan' && <div className='mt-5'><Plan /></div>}
         </main>
     )
 }
