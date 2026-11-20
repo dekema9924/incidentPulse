@@ -45,7 +45,7 @@ export const createCheckoutSession = async (input: {
         }
 
         const metadata = { userId: session.user.id, plan: input.plan, seats: String(seats) }
-        const app = process.env.NEXT_PUBLIC_APP_URL
+        const app = process.env.APP_URL
 
         const checkout = await stripe.checkout.sessions.create({
             mode: isTeam ? 'subscription' : 'payment',

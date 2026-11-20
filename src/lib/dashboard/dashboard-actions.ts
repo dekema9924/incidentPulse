@@ -277,7 +277,7 @@ export const inviteMember = async (input: {
             orgName: org.name,
             inviterName: session.user.name,
             role: input.role,
-            inviteUrl: `${process.env.NEXT_PUBLIC_APP_URL}/auth/invite/${rawToken}`,
+            inviteUrl: `${process.env.APP_URL}/auth/invite/${rawToken}`,
             expiresInDays: EXPIRES_IN_DAYS,
         })
 

@@ -62,7 +62,7 @@ export async function runEscalationCheck() {
                     title: inc.title,
                     orgName: inc.organization.name,
                     minutesOpen: Math.round((Date.now() - inc.createdAt.getTime()) / 60000),
-                    dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/${inc.organization.slug}`,
+                    dashboardUrl: `${process.env.APP_URL}/dashboard/${inc.organization.slug}`,
                 })
             }
 
