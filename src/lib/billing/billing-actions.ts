@@ -8,18 +8,28 @@ import { memberLimitFor, ORG_LIMITS, PlanName } from './plans'
 import { requireOrgAccess } from '../dashboard/org-access'
 
 type PaidPlan = 'TEAM' | 'LIFETIME'
+type CheckoutResult = { success: true; url: string } | { success: false; error: string }
 
-// price IDs live on the server: the client only says which plan, never what it costs
-const PRICE_IDS: Record<PaidPlan, string> = {
-    TEAM: process.env.STRIPE_PRICE_TEAM!,
-    LIFETIME: process.env.STRIPE_PRICE_LIFETIME!,
+// read at request time, and fail loudly instead of sending Stripe a line item with no price
+const priceIdFor = (plan: PaidPlan): string | null => {
+    const id = (plan === 'TEAM' ? process.env.STRIPE_PRICE_TEAM : process.env.STRIPE_PRICE_LIFETIME)?.trim()
+
+    if (!id) {
+        console.error(`Missing Stripe price ID for plan ${plan}. Check the environment variables on this deployment.`)
+        return null
+    }
+    if (!id.startsWith('price_')) {
+        console.error(`The Stripe value for ${plan} doesn't look like a price ID (it should start with price_).`)
+        return null
+    }
+    return id
 }
 
 export const createCheckoutSession = async (input: {
     plan: PaidPlan
     seats: number
-}): Promise<{ success: true; url: string } | { success: false; error: string }> => {
-    const session = await RequireAuth()
+}): Promise<CheckoutResult> => {
+    const session = await RequireAuth() // outside try/catch: redirect() works by throwing
 
     if (!session.user.emailVerified) {
         return { success: false, error: 'Verify your email first.' }
@@ -31,31 +41,41 @@ export const createCheckoutSession = async (input: {
     const isTeam = input.plan === 'TEAM'
     const seats = isTeam ? Math.min(100, Math.max(1, Math.floor(Number(input.seats) || 1))) : 1
 
+    // configuration problems are yours, not the user's: check them before touching the database
+    const priceId = priceIdFor(input.plan)
+    const app = process.env.APP_URL
+    if (!app) console.error('APP_URL is missing or not a full URL like https://your-app.vercel.app')
+    if (!priceId || !app) {
+        return { success: false, error: 'Billing is not configured yet. Please try again later.' }
+    }
+
     try {
         const user = await prisma.user.findUnique({
             where: { id: session.user.id },
             select: { plan: true, stripeCustomerId: true },
         })
+
         if (user?.plan === 'LIFETIME') {
             return { success: false, error: 'You already have the Lifetime plan.' }
         }
-
-        if (user?.plan === 'TEAM' && input.plan === 'TEAM') {
+        if (user?.plan === 'TEAM' && isTeam) {
             return { success: false, error: "You're already on Team. Change seats from billing." }
         }
 
         const metadata = { userId: session.user.id, plan: input.plan, seats: String(seats) }
-        const app = process.env.APP_URL
 
         const checkout = await stripe.checkout.sessions.create({
             mode: isTeam ? 'subscription' : 'payment',
-            line_items: [{ price: PRICE_IDS[input.plan], quantity: seats }],
+            line_items: [{ price: priceId, quantity: seats }],
             client_reference_id: session.user.id,
             metadata,
             ...(isTeam ? { subscription_data: { metadata } } : {}),
             ...(user?.stripeCustomerId
                 ? { customer: user.stripeCustomerId }
-                : { customer_email: session.user.email, ...(isTeam ? {} : { customer_creation: 'always' as const }) }),
+                : {
+                    customer_email: session.user.email,
+                    ...(isTeam ? {} : { customer_creation: 'always' as const }),
+                }),
             success_url: `${app}/dashboard?checkout=success`,
             cancel_url: `${app}/dashboard?checkout=cancelled`,
         })
@@ -67,7 +87,6 @@ export const createCheckoutSession = async (input: {
         return { success: false, error: 'Could not start checkout. Please try again.' }
     }
 }
-
 
 
 

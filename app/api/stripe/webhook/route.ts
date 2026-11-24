@@ -17,6 +17,7 @@ export async function POST(req: Request) {
     switch (event.type) {
         case 'checkout.session.completed': {
             const s = event.data.object as Stripe.Checkout.Session
+
             if (s.payment_status !== 'paid') break
 
             const userId = s.client_reference_id
@@ -24,6 +25,7 @@ export async function POST(req: Request) {
             if (!userId || (plan !== 'TEAM' && plan !== 'LIFETIME')) break
 
             const seats = plan === 'TEAM' ? Math.max(1, Number(s.metadata?.seats) || 1) : 0
+
             await prisma.user.update({
                 where: { id: userId },
                 data: {
@@ -32,6 +34,13 @@ export async function POST(req: Request) {
                     ...(typeof s.customer === 'string' ? { stripeCustomerId: s.customer } : {}),
                 },
             })
+
+            if (plan === 'LIFETIME' && typeof s.customer === 'string') {
+                const subs = await stripe.subscriptions.list({ customer: s.customer, status: 'active' })
+                for (const sub of subs.data) {
+                    await stripe.subscriptions.cancel(sub.id)
+                }
+            }
             break
         }
 
